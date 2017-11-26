@@ -1,0 +1,9 @@
+{
+  "vendor" = "John Hillery"
+  "module_build" = "1"
+  "minbuild" = "1000"
+  "vendor.url" = "http://your.url.here/"
+  "module_name" = "NW Sync"
+  "module_desc" = "<html><body><title>NW Sync</title><p>Module used to synchronize John's <b>NW</b> spreadsheet document with Moneydance.</p></body></html>"
+  "desc" = "Module used to synchronize John's NW spreadsheet document with Moneydance."
+}

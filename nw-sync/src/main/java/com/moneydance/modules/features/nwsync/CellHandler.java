@@ -3,20 +3,15 @@
  */
 package com.moneydance.modules.features.nwsync;
 
-import static java.util.Calendar.DAY_OF_MONTH;
-import static java.util.Calendar.JANUARY;
-import static java.util.Calendar.MONTH;
-import static java.util.Calendar.YEAR;
-import static org.odftoolkit.odfdom.dom.attribute.office.OfficeValueTypeAttribute.Value.CURRENCY;
-import static org.odftoolkit.odfdom.dom.attribute.office.OfficeValueTypeAttribute.Value.DATE;
-import static org.odftoolkit.odfdom.dom.attribute.office.OfficeValueTypeAttribute.Value.FLOAT;
+import static com.sun.star.uno.UnoRuntime.queryInterface;
 
 import java.text.NumberFormat;
-import java.util.Calendar;
+import java.time.LocalDate;
 
-import org.odftoolkit.odfdom.dom.attribute.office.OfficeValueTypeAttribute;
-import org.odftoolkit.simple.table.Cell;
-import org.odftoolkit.simple.table.Row;
+import com.sun.star.sheet.XCellAddressable;
+import com.sun.star.table.CellAddress;
+import com.sun.star.table.XCell;
+import com.sun.star.text.XText;
 
 /**
  * Abstract read and write access to numeric spreadsheet cells.
@@ -27,17 +22,17 @@ public abstract class CellHandler {
 	 * Provide read and write access to currency spreadsheet cells.
 	 */
 	public static class CurrencyCellHandler extends CellHandler {
-		public CurrencyCellHandler(Cell cell) {
-			super(cell);
+		public CurrencyCellHandler(XCell cell, CalcDoc calcDoc) {
+			super(cell, calcDoc);
 
-		} // end (Cell) constructor
+		} // end (XCell, CalcDoc) constructor
 
 		public Double getValue() {
-			return this.cell.getCurrencyValue();
+			return this.cell.getValue();
 		} // end getValue()
 
 		public void setValue(Number value) {
-			this.cell.setCurrencyValue((Double) value, this.cell.getCurrencyCode());
+			this.cell.setValue((Double) value);
 
 		} // end setValue(Number)
 
@@ -51,17 +46,17 @@ public abstract class CellHandler {
 	 * Provide read and write access to floating point spreadsheet cells.
 	 */
 	public static class FloatCellHandler extends CellHandler {
-		public FloatCellHandler(Cell cell) {
-			super(cell);
+		public FloatCellHandler(XCell cell, CalcDoc calcDoc) {
+			super(cell, calcDoc);
 
-		} // end (Cell) constructor
+		} // end (XCell, CalcDoc) constructor
 
 		public Double getValue() {
-			return this.cell.getDoubleValue();
+			return this.cell.getValue();
 		} // end getValue()
 
 		public void setValue(Number value) {
-			this.cell.setDoubleValue((Double) value);
+			this.cell.setValue((Double) value);
 
 		} // end setValue(Number)
 
@@ -75,27 +70,26 @@ public abstract class CellHandler {
 	 * Provide read and write access to date spreadsheet cells.
 	 */
 	public static class DateCellHandler extends CellHandler {
-		public DateCellHandler(Cell cell) {
-			super(cell);
+		public DateCellHandler(XCell cell, CalcDoc calcDoc) {
+			super(cell, calcDoc);
 
-		} // end (Cell) constructor
+		} // end (XCell, CalcDoc) constructor
 
 		public Integer getValue() {
-			Calendar cal = this.cell.getDateValue();
-			int dateInt = cal.get(YEAR) * 10000 + (cal.get(MONTH) - JANUARY + 1) * 100
-					+ cal.get(DAY_OF_MONTH);
+			LocalDate date = this.calcDoc.getLocalDate(this.cell.getValue());
+			int dateInt = date.getYear() * 10000 + date.getMonthValue() * 100
+					+ date.getDayOfMonth();
 
 			return dateInt;
 		} // end getValue()
 
 		public void setValue(Number value) {
 			int dateInt = value.intValue();
-			Calendar date = Calendar.getInstance();
-			date.clear();
-			date.set(YEAR, dateInt / 10000);
-			date.set(MONTH, ((dateInt % 10000) / 100) - 1 + JANUARY);
-			date.set(DAY_OF_MONTH, dateInt % 100);
-			this.cell.setDateValue(date);
+			int year = dateInt / 10000;
+			int month = (dateInt % 10000) / 100;
+			int dayOfMonth = dateInt % 100;
+			long dateNum = this.calcDoc.getDateNumber(LocalDate.of(year, month, dayOfMonth));
+			this.cell.setValue(dateNum);
 
 		} // end setValue(Number)
 
@@ -105,18 +99,21 @@ public abstract class CellHandler {
 
 	} // end class DateCellHandler
 
-	protected Cell cell;
+	protected XCell cell;
+	protected CalcDoc calcDoc;
 	private Number newValue = null;
 
 	/**
 	 * Sole constructor.
 	 *
-	 * @param cell ods Cell instance to be handled
+	 * @param cell office Cell instance to be handled
+	 * @param calcDoc local spreadsheet document containing this cell
 	 */
-	public CellHandler(Cell cell) {
+	public CellHandler(XCell cell, CalcDoc calcDoc) {
 		this.cell = cell;
+		this.calcDoc = calcDoc;
 
-	} // end (Cell) constructor
+	} // end (XCell, CalcDoc) constructor
 
 	/**
 	 * @return the numeric value of this cell
@@ -144,7 +141,7 @@ public abstract class CellHandler {
 	 * @return the text displayed in this cell
 	 */
 	public String getDisplayText() {
-		return this.cell.getDisplayText();
+		return asDisplayText(this.cell);
 	} // end getDisplayText()
 
 	/**
@@ -166,41 +163,24 @@ public abstract class CellHandler {
 	} // end applyUpdate()
 
 	/**
-	 * @return string representation of this CellHandler
+	 * @return a string representation of this CellHandler
 	 */
 	public String toString() {
+		XCellAddressable addressable = queryInterface(XCellAddressable.class, this.cell);
+		CellAddress cellAdr = addressable == null ? null : addressable.getCellAddress();
 
-		return this.cell.getOdfElement().toString();
+		return cellAdr == null ? super.toString()
+				: "cell[" + cellAdr.Column + ", " + cellAdr.Row + ", " + cellAdr.Sheet + ']';
 	} // end toString()
 
 	/**
 	 * @param cell
-	 * @param valueType
-	 * @return true when the supplied cell has the specified value type
+	 * @return the text displayed in cell
 	 */
-	public static boolean isValueType(Cell cell, OfficeValueTypeAttribute.Value valueType) {
+	public static String asDisplayText(XCell cell) {
+		XText cellText = queryInterface(XText.class, cell);
 
-		return cell != null && valueType.toString().equals(cell.getValueType());
-	} // end isValueType(Cell, Value)
-
-	/**
-	 * @param row ods Row instance
-	 * @param index
-	 * @return concrete CellHandler instance for the specified cell
-	 */
-	public static CellHandler getCellHandlerByIndex(Row row, int index) {
-		Cell cell = row.getCellByIndex(index);
-
-		if (isValueType(cell, CURRENCY))
-			return new CurrencyCellHandler(cell);
-
-		if (isValueType(cell, FLOAT))
-			return new FloatCellHandler(cell);
-
-		if (isValueType(cell, DATE))
-			return new DateCellHandler(cell);
-
-		return null;
-	} // end getCellHandlerByIndex(Row, int)
+		return cellText == null ? null : cellText.getString();
+	} // end asDisplayText(XCell)
 
 } // end class CellHandler

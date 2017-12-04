@@ -9,7 +9,7 @@ http://jakarta.apache.org/ant/index.html
   <property name="build" value="."/>
   <property name="moneydance.devkit" value="C:/Users/John/Documents/Prog/moneydance-devkit-4.0"/>
   <property name="thirdparty" value="${src}/../3rdParty"/>
-  <property name="odfdom.toolkit" value="${thirdparty}/odftoolkit-0.6.2-incubating"/>
+  <property name="libreoffice.api" value="C:/Program Files/LibreOffice 5/program/classes"/>
   <property name="privkeyfile" value="${build}/priv_key"/>
   <property name="pubkeyfile" value="${build}/pub_key"/>
   <property name="privkeyid" value="99"/>
@@ -24,9 +24,11 @@ http://jakarta.apache.org/ant/index.html
   <path id="classpath">
     <pathelement path="${moneydance.devkit}/lib/extadmin.jar"/>
     <pathelement path="${moneydance.devkit}/lib/moneydance-dev.jar"/>
-    <pathelement path="${odfdom.toolkit}/odfdom-java-0.8.11-incubating.jar"/>
-    <pathelement path="${odfdom.toolkit}/simple-odf-0.8.2-incubating.jar"/>
-    <pathelement path="${thirdparty}/xercesImpl-2.9.1.jar"/>
+    <pathelement path="${libreoffice.api}/juh.jar"/>
+    <pathelement path="${libreoffice.api}/jurt.jar"/>
+    <pathelement path="${libreoffice.api}/ridl.jar"/>
+    <pathelement path="${libreoffice.api}/unoil.jar"/>
+    <pathelement path="${libreoffice.api}/unoloader.jar"/>
   </path>
 
   <target name="init">
@@ -41,15 +43,12 @@ http://jakarta.apache.org/ant/index.html
     <jar destfile="${build}/nwsync.mxt">
       <fileset dir="${src}/src/main/resources" includes="**"/>
       <fileset dir="${build}" includes="com/moneydance/modules/features/nwsync/**"/>
-      <zipgroupfileset dir="${odfdom.toolkit}" includes="
-        simple-odf-0.8.2-incubating.jar
-        odfdom-java-0.8.11-incubating.jar"/>
-      <zipgroupfileset dir="${thirdparty}" includes="
-        xercesImpl-2.9.1.jar
-        java-rdfa-0.4.2.jar
-        jena-core-2.11.2.jar
-        jena-iri-1.0.2.jar
-        commons-validator-1.5.0.jar"/>
+      <zipgroupfileset dir="${libreoffice.api}" includes="
+      	juh.jar
+      	jurt.jar
+      	ridl.jar
+      	unoil.jar
+      	unoloader.jar"/>
     </jar>
 
     <java newenvironment="true" 

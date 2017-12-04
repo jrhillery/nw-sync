@@ -6,6 +6,7 @@ package com.moneydance.modules.features.nwsync;
 import java.io.File;
 
 import com.moneydance.apps.md.controller.FeatureModule;
+import com.sun.star.lib.util.NativeLibraryLoader;
 
 /**
  * Module used to synchronize John's NW spreadsheet document with Moneydance.
@@ -32,11 +33,11 @@ public class Main extends FeatureModule {
 	public void invoke(String uri) {
 		System.err.println(getName() + " invoked with uri [" + uri + ']');
 		showConsole();
+		File fOffice = NativeLibraryLoader.getResource(Main.class.getClassLoader(),
+				"soffice.exe");
+		System.err.println("Office exe is [" + fOffice + ']');
 
-		String subdirectory = "C:/Users/John/Documents/Financial";
-		String fileName = "NW.ods";
-		this.odsAcc = new OdsAccessor(new File(subdirectory, fileName),
-				getContext().getCurrentAccountBook());
+		this.odsAcc = new OdsAccessor(getContext().getCurrentAccountBook());
 		try {
 			this.odsAcc.syncNwData();
 			this.messageWindow.setText(this.odsAcc.getMessages());
@@ -64,6 +65,9 @@ public class Main extends FeatureModule {
 	public void cleanup() {
 		closeConsole();
 
+		if (this.odsAcc != null)
+			this.odsAcc = this.odsAcc.releaseResources();
+
 	} // end cleanup()
 
 	public String getName() {
@@ -84,9 +88,11 @@ public class Main extends FeatureModule {
 	} // end showConsole()
 
 	synchronized void closeConsole() {
-		if (this.messageWindow != null) {
+		if (this.messageWindow != null)
 			this.messageWindow = this.messageWindow.goAway();
-		}
+
+		if (this.odsAcc != null)
+			this.odsAcc = this.odsAcc.releaseResources();
 
 	} // end closeConsole()
 

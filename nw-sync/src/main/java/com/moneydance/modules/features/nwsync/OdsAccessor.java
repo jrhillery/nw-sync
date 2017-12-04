@@ -4,9 +4,9 @@
 package com.moneydance.modules.features.nwsync;
 
 import static com.infinitekind.moneydance.model.Account.AccountType.CREDIT_CARD;
-import static org.odftoolkit.odfdom.dom.attribute.office.OfficeValueTypeAttribute.Value.STRING;
+import static com.sun.star.table.CellContentType.FORMULA;
+import static com.sun.star.table.CellContentType.TEXT;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
@@ -14,42 +14,41 @@ import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ResourceBundle;
-
-import org.odftoolkit.simple.SpreadsheetDocument;
-import org.odftoolkit.simple.table.Cell;
-import org.odftoolkit.simple.table.Row;
-import org.odftoolkit.simple.table.Table;
 
 import com.infinitekind.moneydance.model.Account;
 import com.infinitekind.moneydance.model.AccountBook;
 import com.infinitekind.moneydance.model.AcctFilter;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
+import com.sun.star.container.XEnumeration;
+import com.sun.star.frame.XDesktop2;
+import com.sun.star.lang.XServiceInfo;
+import com.sun.star.sheet.XSpreadsheetDocument;
+import com.sun.star.table.XCell;
+import com.sun.star.table.XCellRange;
+import com.sun.star.uno.UnoRuntime;
 
 /**
  * Provides read/write access to an ods (OpenOffice/LibreOffice) spreadsheet
  * document.
  */
 public class OdsAccessor {
-
-	private File spreadSheetFile;
 	private Account root;
 	private CurrencyTable securities;
 	private StringWriter msgBuffer;
 	private PrintWriter msgWriter;
-	private ResourceBundle msgBundle;
 
 	private ArrayList<CellHandler> changes = new ArrayList<CellHandler>();
-	private SpreadsheetDocument spreadSheetDoc = null;
-	private Table firstSheet = null;
-	private Row dateRow = null;
+	private CalcDoc spreadSheetDoc = null;
+	private XCellRange dateRow = null;
 	private int latestColumn = 0;
 	private int latestDate = 0;
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
+
+	private static ResourceBundle msgBundle = null;
 
 	private static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages";
 	private static final double [] centMult = {1, 10, 100, 1000, 10000};
@@ -57,50 +56,33 @@ public class OdsAccessor {
 	/**
 	 * Sole constructor.
 	 *
-	 * @param spreadSheetFile ods spreadsheet document
 	 * @param accountBook Moneydance account book
 	 */
-	public OdsAccessor(File spreadSheetFile, AccountBook accountBook) {
-		this.spreadSheetFile = spreadSheetFile;
+	public OdsAccessor(AccountBook accountBook) {
 		this.root = accountBook.getRootAccount();
 		this.securities = accountBook.getCurrencies();
 		this.msgBuffer = new StringWriter();
 		this.msgWriter = new PrintWriter(this.msgBuffer);
-		try {
-			this.msgBundle = ResourceBundle.getBundle(baseMessageBundleName);
-		} catch (Exception e) {
-			System.err.format("Unable to load message bundle %s. %s%n", baseMessageBundleName, e);
-			this.msgBundle = new ResourceBundle() {
-				protected Object handleGetObject(String key) {
-					// just use the key since we have no message bundle
-					return key;
-				}
 
-				public Enumeration<String> getKeys() {
-					return null;
-				}
-			};
-		}
-
-	} // end (File, AccountBook) constructor
+	} // end (AccountBook) constructor
 
 	/**
 	 * Synchronize data between a spreadsheet document and Moneydance.
 	 */
 	public void syncNwData() throws OdsException {
-		Iterator<Row> rowItr = getFirstSheet().getRowIterator();
+		XEnumeration rowItr = getCalcDoc().getFirstSheetRowIterator();
 		findDateRow(rowItr);
 		findLatestDate();
 
-		while (rowItr.hasNext()) {
-			Row r = rowItr.next();
-			Cell key = r.getCellByIndex(0);
+		while (rowItr.hasMoreElements()) {
+			XCellRange row = CalcDoc.next(XCellRange.class, rowItr);
+			XCell key = CalcDoc.getCellByIndex(row, 0);
 
-			if (CellHandler.isValueType(key, STRING)) {
-				CellHandler val = CellHandler.getCellHandlerByIndex(r, this.latestColumn);
+			if (CalcDoc.isValueType(key, TEXT) || CalcDoc.isValueType(key, FORMULA)) {
+				String keyVal = CellHandler.asDisplayText(key);
+				CellHandler val = getCalcDoc().getCellHandlerByIndex(row, this.latestColumn);
 
-				if (val != null && val.getFormula() == null) {
-					String keyVal = key.getStringValue();
+				if (val != null) {
 					CurrencyType security = this.securities.getCurrencyByTickerSymbol(keyVal);
 
 					if (security != null) {
@@ -216,22 +198,22 @@ public class OdsAccessor {
 	 *
 	 * @param rowIterator
 	 */
-	private void findDateRow(Iterator<Row> rowIterator) throws OdsException {
-		while (rowIterator.hasNext()) {
-			Row r = rowIterator.next();
-			Cell c = r.getCellByIndex(0);
+	private void findDateRow(XEnumeration rowIterator) throws OdsException {
+		while (rowIterator.hasMoreElements()) {
+			XCellRange row = CalcDoc.next(XCellRange.class, rowIterator);
+			XCell c = CalcDoc.getCellByIndex(row, 0);
 
-			if (CellHandler.isValueType(c, STRING)
-					&& "Date".equalsIgnoreCase(c.getStringValue())) {
-				this.dateRow = r;
+			if (CalcDoc.isValueType(c, TEXT)
+					&& "Date".equalsIgnoreCase(CellHandler.asDisplayText(c))) {
+				this.dateRow = row;
 
 				return;
 			}
 		} // end while
 
 		// Unable to find row with 'Date' in first column in %s.
-		throw new OdsException(null, "NWSYNC01", this.spreadSheetFile);
-	} // end findDateRow(Iterator<Row>)
+		throw new OdsException(null, "NWSYNC01", getCalcDoc());
+	} // end findDateRow(XEnumeration)
 
 	/**
 	 * Capture index of the rightmost date in the supplied row. Also capture this
@@ -243,12 +225,12 @@ public class OdsAccessor {
 
 		do {
 			latestCell = c;
-			c = CellHandler.getCellHandlerByIndex(this.dateRow, ++cellIndex);
+			c = getCalcDoc().getCellHandlerByIndex(this.dateRow, ++cellIndex);
 		} while (c instanceof CellHandler.DateCellHandler);
 
 		if (cellIndex == 1)
 			// Unable to find any dates in the row with 'Date' in first column in %s.
-			throw new OdsException(null, "NWSYNC02", this.spreadSheetFile);
+			throw new OdsException(null, "NWSYNC02", getCalcDoc());
 
 		this.latestColumn = cellIndex - 1;
 
@@ -262,34 +244,31 @@ public class OdsAccessor {
 
 	/**
 	 * Commit any changes to the spreadsheet document.
-	 *
-	 * @return null
 	 */
-	public OdsAccessor commitChanges() throws OdsException {
+	public void commitChanges() {
 		if (isModified()) {
 			for (CellHandler cHandler : this.changes) {
 				cHandler.applyUpdate();
-			}
-			SpreadsheetDocument doc = getSpreadSheetDoc();
-			try {
-				doc.save(this.spreadSheetFile);
-			} catch (Exception e) {
-				// Exception saving changes to spreadsheet document %s. %s
-				throw new OdsException(e, "NWSYNC00", this.spreadSheetFile, e);
 			}
 			this.changes.clear();
 
 			// write a summary line
 			writeSummary();
 		}
-		return null;
+
 	} // end commitChanges()
 
 	/**
 	 * Write a summary line.
 	 */
 	private void writeSummary() {
-		String date = this.dateRow.getCellByIndex(this.latestColumn).getDisplayText();
+		String date;
+		try {
+			date = CellHandler
+					.asDisplayText(CalcDoc.getCellByIndex(this.dateRow, this.latestColumn));
+		} catch (Exception e) {
+			date = "unknown date";
+		}
 
 		// For %s changed %d security price%s and %d account balance%s.%n
 		writeFormatted("NWSYNC12", date, this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
@@ -314,42 +293,81 @@ public class OdsAccessor {
 	} // end getMessages()
 
 	/**
-	 * @return the spreadsheet document, loading it if necessary
+	 * @return the currently open spreadsheet document
 	 */
-	private SpreadsheetDocument getSpreadSheetDoc() throws OdsException {
+	private CalcDoc getCalcDoc() throws OdsException {
 		if (this.spreadSheetDoc == null) {
-			try {
-				this.spreadSheetDoc = SpreadsheetDocument.loadDocument(this.spreadSheetFile);
-			} catch (Exception e) {
-				// Exception loading spreadsheet document %s. %s
-				throw new OdsException(e, "NWSYNC04", this.spreadSheetFile, e);
+			XSpreadsheetDocument doc = null;
+			int numSpreadsheetDocs = 0;
+			XDesktop2 libreOfficeDesktop = CalcDoc.getOfficeDesktop();
+			XEnumeration compItr = libreOfficeDesktop.getComponents().createEnumeration();
+
+			if (!compItr.hasMoreElements()) {
+				// no components so we probably started the desktop => terminate it
+				libreOfficeDesktop.terminate();
+			} else {
+				do {
+					XServiceInfo comp = CalcDoc.next(XServiceInfo.class, compItr);
+
+					if (comp.supportsService("com.sun.star.sheet.SpreadsheetDocument")) {
+						doc = UnoRuntime.queryInterface(XSpreadsheetDocument.class, comp);
+						++numSpreadsheetDocs;
+					}
+				} while (compItr.hasMoreElements());
 			}
 
-			if (this.spreadSheetDoc == null)
-				// Unable to load spreadsheet document %s.
-				throw new OdsException(null, "NWSYNC05", this.spreadSheetFile);
+			if (doc == null)
+				// No open spreadsheet documents found.
+				throw new OdsException(null, "NWSYNC05");
+
+			if (numSpreadsheetDocs > 1)
+				// Found %d open spreadsheet documents. Can only work with one.
+				throw new OdsException(null, "NWSYNC04", numSpreadsheetDocs);
+
+			this.spreadSheetDoc = new CalcDoc(doc);
 		}
+
 		return this.spreadSheetDoc;
-	} // end getSpreadSheetDoc()
+	} // end getCalcDoc()
 
 	/**
-	 * @return the first sheet in the spreadsheet document
+	 * Release any resources we acquired. This includes closing the connection to
+	 * the office process.
+	 *
+	 * @return null
 	 */
-	private Table getFirstSheet() throws OdsException {
-		if (this.firstSheet == null) {
-			this.firstSheet = getSpreadSheetDoc().getSheetByIndex(0);
+	public OdsAccessor releaseResources() {
+		CalcDoc.closeOfficeConnection();
 
-			if (this.firstSheet == null)
-				// Unable to load first sheet in %s.
-				throw new OdsException(null, "NWSYNC03", this.spreadSheetFile);
+		return null;
+	} // end releaseResources()
+
+	private static ResourceBundle getMsgBundle() {
+		if (msgBundle == null) {
+			try {
+				msgBundle = ResourceBundle.getBundle(baseMessageBundleName);
+			} catch (Exception e) {
+				System.err.format("Unable to load message bundle %s. %s%n", baseMessageBundleName, e);
+				msgBundle = new ResourceBundle() {
+					protected Object handleGetObject(String key) {
+						// just use the key since we have no message bundle
+						return key;
+					}
+
+					public Enumeration<String> getKeys() {
+						return null;
+					}
+				};
+			} // end catch
 		}
-		return this.firstSheet;
-	} // end getFirstSheet()
+
+		return msgBundle;
+	} // end getMsgBundle()
 
 	/**
 	 * Inner class to house exceptions.
 	 */
-	public class OdsException extends Exception {
+	public static class OdsException extends Exception {
 
 		private static final long serialVersionUID = -9019657124886615063L;
 
@@ -369,9 +387,9 @@ public class OdsAccessor {
 	 * @param key The resource bundle key (or message)
 	 * @return message for this key
 	 */
-	private String retrieveMessage(String key) {
+	private static String retrieveMessage(String key) {
 		try {
-			return this.msgBundle.getString(key);
+			return getMsgBundle().getString(key);
 		} catch (Exception e) {
 			// just use the key when not found
 			return key;

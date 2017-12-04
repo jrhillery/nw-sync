@@ -43,12 +43,12 @@ http://jakarta.apache.org/ant/index.html
     <jar destfile="${build}/nwsync.mxt">
       <fileset dir="${src}/src/main/resources" includes="**"/>
       <fileset dir="${build}" includes="com/moneydance/modules/features/nwsync/**"/>
-      <zipgroupfileset dir="${libreoffice.api}" includes="
+      <!-- <zipgroupfileset dir="${libreoffice.api}" includes="
       	juh.jar
       	jurt.jar
       	ridl.jar
       	unoil.jar
-      	unoloader.jar"/>
+      	unoloader.jar"/> -->
     </jar>
 
     <java newenvironment="true" 

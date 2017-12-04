@@ -3,10 +3,7 @@
  */
 package com.moneydance.modules.features.nwsync;
 
-import java.io.File;
-
 import com.moneydance.apps.md.controller.FeatureModule;
-import com.sun.star.lib.util.NativeLibraryLoader;
 
 /**
  * Module used to synchronize John's NW spreadsheet document with Moneydance.
@@ -31,11 +28,9 @@ public class Main extends FeatureModule {
 	 * @see com.moneydance.apps.md.controller.FeatureModule#invoke(java.lang.String)
 	 */
 	public void invoke(String uri) {
-		System.err.println(getName() + " invoked with uri [" + uri + ']');
+		System.err.println(getName() + " invoked with uri [" + uri + "] and class path "
+				+ System.getProperty("java.class.path"));
 		showConsole();
-		File fOffice = NativeLibraryLoader.getResource(Main.class.getClassLoader(),
-				"soffice.exe");
-		System.err.println("Office exe is [" + fOffice + ']');
 
 		this.odsAcc = new OdsAccessor(getContext().getCurrentAccountBook());
 		try {
@@ -64,9 +59,6 @@ public class Main extends FeatureModule {
 
 	public void cleanup() {
 		closeConsole();
-
-		if (this.odsAcc != null)
-			this.odsAcc = this.odsAcc.releaseResources();
 
 	} // end cleanup()
 

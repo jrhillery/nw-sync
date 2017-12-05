@@ -141,8 +141,8 @@ public class CalcDoc {
 		try {
 			// get the bridge factory from the local service manager
 			XBridgeFactory bridgeFactory = queryInterface(XBridgeFactory.class,
-					Bootstrap.createSimpleServiceManager()
-							.createInstance("com.sun.star.bridge.BridgeFactory"));
+				Bootstrap.createSimpleServiceManager()
+					.createInstance("com.sun.star.bridge.BridgeFactory"));
 
 			if (bridgeFactory != null) {
 				for (XBridge bridge : bridgeFactory.getExistingBridges()) {
@@ -150,7 +150,7 @@ public class CalcDoc {
 					queryInterface(XComponent.class, bridge).dispose();
 				}
 			}
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			System.err.println("Exception disposing office process connection bridge:");
 			e.printStackTrace(System.err);
 		}

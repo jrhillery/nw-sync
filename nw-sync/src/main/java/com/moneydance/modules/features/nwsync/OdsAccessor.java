@@ -250,7 +250,7 @@ public class OdsAccessor {
 		// capture date value in decimal form YYYYMMDD
 		this.latestDate = latestCell.getValue().intValue();
 
-		// Found rightmost date [%s] in %s.%n
+		// Found date [%s] in %s.%n
 		writeFormatted("NWSYNC13", latestCell.getDisplayText(), getCalcDoc());
 
 		return true;

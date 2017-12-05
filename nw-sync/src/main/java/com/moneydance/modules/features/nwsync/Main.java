@@ -38,6 +38,8 @@ public class Main extends FeatureModule {
 			this.messageWindow.setText(this.odsAcc.getMessages());
 			this.messageWindow.enableCommitButton(this.odsAcc.isModified());
 		} catch (Throwable e) {
+			this.messageWindow.setText(this.odsAcc.getMessages() + e);
+			this.messageWindow.enableCommitButton(false);
 			e.printStackTrace(System.err);
 		}
 

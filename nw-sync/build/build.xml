@@ -37,7 +37,7 @@ http://jakarta.apache.org/ant/index.html
 
   <target name="nwsync" depends="init">
     <javac srcdir="${src}/src/main/java" debug="${debug}" optimize="${optimize}"
-      classpathref="classpath"  destdir="${build}"
+      classpathref="classpath" destdir="${build}"
       includes="com/moneydance/modules/features/nwsync/**"/>
 
     <jar destfile="${build}/nwsync.mxt">
@@ -51,16 +51,16 @@ http://jakarta.apache.org/ant/index.html
       	unoloader.jar"/> -->
     </jar>
 
-    <java newenvironment="true" 
-      inputstring="nwsync's passphrase"
+    <java classname="com.moneydance.admin.KeyAdmin"
       classpathref="classpath"
-      classname="com.moneydance.admin.KeyAdmin">
+      inputstring="nwsync's passphrase">
       <arg value="signextjar"/>
       <arg value="${privkeyfile}"/>
       <arg value="${privkeyid}"/>
       <arg value="nwsync"/>
       <arg line="${build}/nwsync.mxt"/>
     </java>
+  	<delete file="${build}/nwsync.mxt"/>
     <move file="s-nwsync.mxt" tofile="${dist}/nwsync.mxt"/>
   </target>
 

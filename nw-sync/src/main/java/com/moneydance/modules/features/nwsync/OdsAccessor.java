@@ -23,12 +23,9 @@ import com.infinitekind.moneydance.model.AcctFilter;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
 import com.sun.star.container.XEnumeration;
-import com.sun.star.frame.XDesktop2;
-import com.sun.star.lang.XServiceInfo;
 import com.sun.star.sheet.XSpreadsheetDocument;
 import com.sun.star.table.XCell;
 import com.sun.star.table.XCellRange;
-import com.sun.star.uno.UnoRuntime;
 
 /**
  * Provides read/write access to an ods (OpenOffice/LibreOffice) spreadsheet
@@ -40,8 +37,8 @@ public class OdsAccessor {
 	private StringWriter msgBuffer;
 	private PrintWriter msgWriter;
 
-	private ArrayList<CellHandler> changes = new ArrayList<CellHandler>();
-	private CalcDoc spreadSheetDoc = null;
+	private List<CellHandler> changes = new ArrayList<>();
+	private CalcDoc calcDoc = null;
 	private XCellRange dateRow = null;
 	private int latestColumn = 0;
 	private int latestDate = 0;
@@ -70,9 +67,17 @@ public class OdsAccessor {
 	 * Synchronize data between a spreadsheet document and Moneydance.
 	 */
 	public void syncNwData() throws OdsException {
-		XEnumeration rowItr = getCalcDoc().getFirstSheetRowIterator();
-		findDateRow(rowItr);
-		findLatestDate();
+		CalcDoc calcDoc = getCalcDoc();
+		if (calcDoc == null)
+			return; // nothing to synchronize
+
+		XEnumeration rowItr = calcDoc.getFirstSheetRowIterator();
+
+		if (!findDateRow(rowItr))
+			return; // can't synchronize without a date row
+
+		if (!findLatestDate())
+			return; // can't synchronize without knowing the latest date
 
 		while (rowItr.hasMoreElements()) {
 			XCellRange row = CalcDoc.next(XCellRange.class, rowItr);
@@ -80,7 +85,7 @@ public class OdsAccessor {
 
 			if (CalcDoc.isValueType(key, TEXT) || CalcDoc.isValueType(key, FORMULA)) {
 				String keyVal = CellHandler.asDisplayText(key);
-				CellHandler val = getCalcDoc().getCellHandlerByIndex(row, this.latestColumn);
+				CellHandler val = calcDoc.getCellHandlerByIndex(row, this.latestColumn);
 
 				if (val != null) {
 					CurrencyType security = this.securities.getCurrencyByTickerSymbol(keyVal);
@@ -197,8 +202,9 @@ public class OdsAccessor {
 	 * Capture row with 'Date' in first column.
 	 *
 	 * @param rowIterator
+	 * @return true when found
 	 */
-	private void findDateRow(XEnumeration rowIterator) throws OdsException {
+	private boolean findDateRow(XEnumeration rowIterator) throws OdsException {
 		while (rowIterator.hasMoreElements()) {
 			XCellRange row = CalcDoc.next(XCellRange.class, rowIterator);
 			XCell c = CalcDoc.getCellByIndex(row, 0);
@@ -207,19 +213,23 @@ public class OdsAccessor {
 					&& "Date".equalsIgnoreCase(CellHandler.asDisplayText(c))) {
 				this.dateRow = row;
 
-				return;
+				return true;
 			}
 		} // end while
 
-		// Unable to find row with 'Date' in first column in %s.
-		throw new OdsException(null, "NWSYNC01", getCalcDoc());
+		// Unable to find row with 'Date' in first column in %s.%n
+		writeFormatted("NWSYNC01", getCalcDoc());
+
+		return false;
 	} // end findDateRow(XEnumeration)
 
 	/**
 	 * Capture index of the rightmost date in the supplied row. Also capture this
 	 * date's YYYYMMDD value.
+	 *
+	 * @return true when found
 	 */
-	private void findLatestDate() throws OdsException {
+	private boolean findLatestDate() throws OdsException {
 		int cellIndex = 0;
 		CellHandler c = null, latestCell;
 
@@ -228,18 +238,22 @@ public class OdsAccessor {
 			c = getCalcDoc().getCellHandlerByIndex(this.dateRow, ++cellIndex);
 		} while (c instanceof CellHandler.DateCellHandler);
 
-		if (cellIndex == 1)
-			// Unable to find any dates in the row with 'Date' in first column in %s.
-			throw new OdsException(null, "NWSYNC02", getCalcDoc());
+		if (cellIndex == 1) {
+			// Unable to find any dates in the row with 'Date' in first column in %s.%n
+			writeFormatted("NWSYNC02", getCalcDoc());
+
+			return false;
+		}
 
 		this.latestColumn = cellIndex - 1;
 
 		// capture date value in decimal form YYYYMMDD
 		this.latestDate = latestCell.getValue().intValue();
 
-		// Found rightmost date: %s.%n
-		writeFormatted("NWSYNC13", latestCell.getDisplayText());
+		// Found rightmost date [%s] in %s.%n
+		writeFormatted("NWSYNC13", latestCell.getDisplayText(), getCalcDoc());
 
+		return true;
 	} // end findLatestDate()
 
 	/**
@@ -296,38 +310,28 @@ public class OdsAccessor {
 	 * @return the currently open spreadsheet document
 	 */
 	private CalcDoc getCalcDoc() throws OdsException {
-		if (this.spreadSheetDoc == null) {
-			XSpreadsheetDocument doc = null;
-			int numSpreadsheetDocs = 0;
-			XDesktop2 libreOfficeDesktop = CalcDoc.getOfficeDesktop();
-			XEnumeration compItr = libreOfficeDesktop.getComponents().createEnumeration();
+		if (this.calcDoc == null) {
+			List<XSpreadsheetDocument> docList = CalcDoc.getSpreadsheetDocs();
 
-			if (!compItr.hasMoreElements()) {
-				// no components so we probably started the desktop => terminate it
-				libreOfficeDesktop.terminate();
-			} else {
-				do {
-					XServiceInfo comp = CalcDoc.next(XServiceInfo.class, compItr);
+			switch (docList.size()) {
+			case 0:
+				// No open spreadsheet documents found.%n
+				writeFormatted("NWSYNC05");
+				break;
 
-					if (comp.supportsService("com.sun.star.sheet.SpreadsheetDocument")) {
-						doc = UnoRuntime.queryInterface(XSpreadsheetDocument.class, comp);
-						++numSpreadsheetDocs;
-					}
-				} while (compItr.hasMoreElements());
+			case 1:
+				// found one => use it
+				this.calcDoc = new CalcDoc(docList.get(0));
+				break;
+
+			default:
+				// Found %d open spreadsheet documents. Can only work with one.%n
+				writeFormatted("NWSYNC04", docList.size());
+				break;
 			}
-
-			if (doc == null)
-				// No open spreadsheet documents found.
-				throw new OdsException(null, "NWSYNC05");
-
-			if (numSpreadsheetDocs > 1)
-				// Found %d open spreadsheet documents. Can only work with one.
-				throw new OdsException(null, "NWSYNC04", numSpreadsheetDocs);
-
-			this.spreadSheetDoc = new CalcDoc(doc);
 		}
 
-		return this.spreadSheetDoc;
+		return this.calcDoc;
 	} // end getCalcDoc()
 
 	/**

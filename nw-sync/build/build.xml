@@ -36,7 +36,7 @@ http://jakarta.apache.org/ant/index.html
   </target>
 
   <target name="nwsync" depends="init">
-    <javac target="1.6" source="1.6" srcdir="${src}/src/main/java" debug="${debug}" optimize="${optimize}"
+    <javac srcdir="${src}/src/main/java" debug="${debug}" optimize="${optimize}"
       classpathref="classpath"  destdir="${build}"
       includes="com/moneydance/modules/features/nwsync/**"/>
 

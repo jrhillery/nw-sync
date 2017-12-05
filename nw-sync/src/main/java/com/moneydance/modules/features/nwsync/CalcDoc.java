@@ -10,6 +10,8 @@ import static com.sun.star.util.NumberFormat.DATE;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.moneydance.modules.features.nwsync.CellHandler.CurrencyCellHandler;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
@@ -26,6 +28,7 @@ import com.sun.star.frame.XDesktop2;
 import com.sun.star.frame.XModel;
 import com.sun.star.lang.XComponent;
 import com.sun.star.lang.XMultiComponentFactory;
+import com.sun.star.lang.XServiceInfo;
 import com.sun.star.sheet.XSpreadsheet;
 import com.sun.star.sheet.XSpreadsheetDocument;
 import com.sun.star.sheet.XUsedAreaCursor;
@@ -75,10 +78,31 @@ public class CalcDoc {
 
 	} // end (XSpreadsheetDocument) constructor
 
+	public static List<XSpreadsheetDocument> getSpreadsheetDocs() throws OdsException {
+		List<XSpreadsheetDocument> docList = new ArrayList<>();
+		XDesktop2 libreOfficeDesktop = getOfficeDesktop();
+		XEnumeration compItr = libreOfficeDesktop.getComponents().createEnumeration();
+
+		if (!compItr.hasMoreElements()) {
+			// no components so we probably started the desktop => terminate it
+			libreOfficeDesktop.terminate();
+		} else {
+			do {
+				XServiceInfo comp = next(XServiceInfo.class, compItr);
+
+				if (comp.supportsService("com.sun.star.sheet.SpreadsheetDocument")) {
+					docList.add(queryInterface(XSpreadsheetDocument.class, comp));
+				}
+			} while (compItr.hasMoreElements());
+		}
+
+		return docList;
+	} // end getSpreadsheetDocs()
+
 	/**
-	 * @return a Libre office desktop interface
+	 * @return a LibreOffice desktop interface
 	 */
-	public static XDesktop2 getOfficeDesktop() throws OdsException {
+	private static XDesktop2 getOfficeDesktop() throws OdsException {
 		XComponentContext remoteContext;
 		try {
 			remoteContext = Bootstrap.bootstrap();
@@ -109,6 +133,29 @@ public class CalcDoc {
 
 		return libreOfficeDesktop;
 	} // end getOfficeDesktop()
+
+	/**
+	 * Close our connection to the office process.
+	 */
+	public static void closeOfficeConnection() {
+		try {
+			// get the bridge factory from the local service manager
+			XBridgeFactory bridgeFactory = queryInterface(XBridgeFactory.class,
+					Bootstrap.createSimpleServiceManager()
+							.createInstance("com.sun.star.bridge.BridgeFactory"));
+
+			if (bridgeFactory != null) {
+				for (XBridge bridge : bridgeFactory.getExistingBridges()) {
+					// dispose of this bridge after closing its connection
+					queryInterface(XComponent.class, bridge).dispose();
+				}
+			}
+		} catch (Exception e) {
+			System.err.println("Exception disposing office process connection bridge:");
+			e.printStackTrace(System.err);
+		}
+
+	} // end closeOfficeConnection()
 
 	/**
 	 * @return the first sheet in the spreadsheet document
@@ -153,29 +200,6 @@ public class CalcDoc {
 
 		return rowAccess.createEnumeration();
 	} // end getFirstSheetRowIterator()
-
-	/**
-	 * Close our connection to the office process.
-	 */
-	public static void closeOfficeConnection() {
-		try {
-			// get the bridge factory from the local service manager
-			XBridgeFactory bridgeFactory = queryInterface(XBridgeFactory.class,
-					Bootstrap.createSimpleServiceManager()
-							.createInstance("com.sun.star.bridge.BridgeFactory"));
-
-			if (bridgeFactory != null) {
-				for (XBridge bridge : bridgeFactory.getExistingBridges()) {
-					// dispose of this bridge after closing its connection
-					queryInterface(XComponent.class, bridge).dispose();
-				}
-			}
-		} catch (Exception e) {
-			System.err.println("Exception disposing office process connection bridge:");
-			e.printStackTrace(System.err);
-		}
-
-	} // end closeOfficeConnection()
 
 	/**
 	 * @param dateNum date value in spreadsheet cell

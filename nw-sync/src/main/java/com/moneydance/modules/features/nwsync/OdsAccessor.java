@@ -92,12 +92,8 @@ public class OdsAccessor {
 
 					if (security != null) {
 						// found this row's ticker symbol in Moneydance securities
-						Number price = val.getValue();
-
-						if (price instanceof Double && price.doubleValue() > 0) {
-							// set the new security price
-							setPrice(security, price.doubleValue());
-						}
+						// set the new security price
+						setPrice(val, security);
 					} else {
 						Account account = getAccount(keyVal);
 
@@ -143,30 +139,29 @@ public class OdsAccessor {
 	} // end getAccount(String)
 
 	/**
-	 * Set the Moneydance security price for the latest date found in the
+	 * Set the spreadsheet security price for the latest date found in the
 	 * spreadsheet.
 	 *
+	 * @param val
 	 * @param security
-	 * @param price
 	 */
-	private void setPrice(CurrencyType security, double price) {
-		// Get the old price rounded to the tenth place past the decimal point
+	private void setPrice(CellHandler val, CurrencyType security) {
+		// Get the price rounded to the tenth place past the decimal point
 		BigDecimal bd = BigDecimal.valueOf(1 / security.getUserRateByDateInt(this.latestDate));
-		double oldPrice = bd.setScale(10, RoundingMode.HALF_EVEN).doubleValue();
+		double price = bd.setScale(10, RoundingMode.HALF_EVEN).doubleValue();
+		Number oldPrice = val.getValue();
 
-		if (price != oldPrice) {
-			double rate = 1 / price;
-			security.setSnapshotInt(this.latestDate, rate);
-			security.setUserRate(rate); // this is usually the newest snapshot
-			security.syncItem();
+		if ((oldPrice instanceof Double) && price != oldPrice.doubleValue()) {
+			val.setNewValue(price);
+			this.changes.add(val);
 			++this.numPricesSet;
 
 			// Change %s price from $%.2f to $%.2f (%+.2f%%).%n
 			writeFormatted("NWSYNC10", security.getName(), oldPrice, price,
-					(price / oldPrice - 1) * 100);
+					(price / oldPrice.doubleValue() - 1) * 100);
 		}
 
-	} // end setPrice(CurrencyType, double)
+	} // end setPrice(CellHandler, CurrencyType)
 
 	/**
 	 * Set the spreadsheet account balance if it differs from Moneydance.

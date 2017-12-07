@@ -9,9 +9,16 @@ import static com.sun.star.util.NumberFormat.CURRENCY;
 import static com.sun.star.util.NumberFormat.DATE;
 import static java.time.temporal.ChronoUnit.DAYS;
 
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import com.moneydance.modules.features.nwsync.CellHandler.CurrencyCellHandler;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
@@ -52,6 +59,8 @@ public class CalcDoc {
 	private LocalDate zeroDate;
 
 	private XSpreadsheet firstSheet = null;
+	private static Properties nwSyncProps = null;
+	private static boolean classPathUpdated = false;
 
 	public CalcDoc(XSpreadsheetDocument spreadSheetDoc) throws OdsException {
 		this.spreadSheetDoc = spreadSheetDoc;
@@ -100,9 +109,54 @@ public class CalcDoc {
 	} // end getSpreadsheetDocs()
 
 	/**
+	 * Modify the system class loader's class path to add the required
+	 * LibreOffice jar files. Need to use reflection since the
+	 * URLClassLoader.addURL(URL) method is protected.
+	 *
+	 * @param officePath location of the installed LibreOffice jar files
+	 */
+	private static void addOfficeApiToClassPath(Path officePath) throws OdsException {
+		URLClassLoader sysClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+		Method addURL;
+		try {
+			addURL = URLClassLoader.class.getDeclaredMethod("addURL", new Class[] { URL.class });
+		} catch (Exception e) {
+			// Exception obtaining class loader addURL method.
+			throw new OdsException(e, "NWSYNC49");
+		}
+		addURL.setAccessible(true);
+		for (String apiJar : new String[] { "juh.jar", "jurt.jar", "ridl.jar", "unoil.jar",
+				"unoloader.jar" }) {
+			URL apiUrl;
+			try {
+				apiUrl = officePath.resolve(apiJar).toUri().toURL();
+			} catch (Exception e) {
+				// Exception obtaining URL to jar %s in path %s.
+				throw new OdsException(e, "NWSYNC50", apiJar, officePath);
+			}
+			try {
+				addURL.invoke(sysClassLoader, apiUrl);
+			} catch (Exception e) {
+				// Exception adding %s to class path.
+				throw new OdsException(e, "NWSYNC51", apiUrl);
+			}
+		} // end for
+
+	} // end addOfficeApiToClassPath(Path)
+
+	/**
 	 * @return a LibreOffice desktop interface
 	 */
 	private static XDesktop2 getOfficeDesktop() throws OdsException {
+		if (!classPathUpdated) {
+			String officeInstallPath = getNwSyncProps().getProperty("Office.install.path");
+			if (officeInstallPath == null)
+				// Unable to obtain Office.install.path from nw-sync.properties on the class path.
+				throw new OdsException(null, "NWSYNC54");
+
+			addOfficeApiToClassPath(Paths.get(officeInstallPath, "program/classes"));
+			classPathUpdated = true;
+		}
 		XComponentContext remoteContext;
 		try {
 			remoteContext = Bootstrap.bootstrap();
@@ -322,5 +376,25 @@ public class CalcDoc {
 			throw new OdsException(e, "NWSYNC48");
 		}
 	} // end getCellByIndex(XCellRange, int)
+
+	public static Properties getNwSyncProps() throws OdsException {
+		if (nwSyncProps == null) {
+			InputStream propsAsStream = CalcDoc.class.getClassLoader()
+					.getResourceAsStream("nw-sync.properties");
+			if (propsAsStream == null)
+				// Unable to find nw-sync.properties on the class path.
+				throw new OdsException(null, "NWSYNC52");
+
+			nwSyncProps = new Properties();
+			try {
+				nwSyncProps.load(propsAsStream);
+			} catch (Exception e) {
+				// Exception loading nw-sync.properties.
+				throw new OdsException(e, "NWSYNC53");
+			}
+		}
+
+		return nwSyncProps;
+	} // end getNwSyncProps()
 
 } // end class CalcDoc

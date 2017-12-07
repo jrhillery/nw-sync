@@ -21,14 +21,18 @@ http://jakarta.apache.org/ant/index.html
   <property name="debug"  value="on"/>
   <property name="optimize"  value="off"/>
 
-  <path id="classpath">
-    <pathelement path="${moneydance.devkit}/lib/extadmin.jar"/>
-    <pathelement path="${moneydance.devkit}/lib/moneydance-dev.jar"/>
+  <path id="libreoffice.lib">
     <pathelement path="${libreoffice.api}/juh.jar"/>
     <pathelement path="${libreoffice.api}/jurt.jar"/>
     <pathelement path="${libreoffice.api}/ridl.jar"/>
     <pathelement path="${libreoffice.api}/unoil.jar"/>
     <pathelement path="${libreoffice.api}/unoloader.jar"/>
+  </path>
+
+  <path id="classpath">
+    <pathelement path="${moneydance.devkit}/lib/extadmin.jar"/>
+    <pathelement path="${moneydance.devkit}/lib/moneydance-dev.jar"/>
+  	<path refid="libreoffice.lib"/>
   </path>
 
   <target name="init">
@@ -43,12 +47,6 @@ http://jakarta.apache.org/ant/index.html
     <jar destfile="${build}/nwsync.mxt">
       <fileset dir="${src}/src/main/resources" includes="**"/>
       <fileset dir="${build}" includes="com/moneydance/modules/features/nwsync/**"/>
-      <!-- <zipgroupfileset dir="${libreoffice.api}" includes="
-      	juh.jar
-      	jurt.jar
-      	ridl.jar
-      	unoil.jar
-      	unoloader.jar"/> -->
     </jar>
 
     <java classname="com.moneydance.admin.KeyAdmin"

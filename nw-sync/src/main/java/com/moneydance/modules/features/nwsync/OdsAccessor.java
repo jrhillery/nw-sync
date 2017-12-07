@@ -11,7 +11,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -149,16 +148,18 @@ public class OdsAccessor {
 		// Get the price rounded to the tenth place past the decimal point
 		BigDecimal bd = BigDecimal.valueOf(1 / security.getUserRateByDateInt(this.latestDate));
 		double price = bd.setScale(10, RoundingMode.HALF_EVEN).doubleValue();
+
 		Number oldPrice = val.getValue();
 
 		if ((oldPrice instanceof Double) && price != oldPrice.doubleValue()) {
+			// Change %s price from %s to %s (%+.2f%%).%n
+			writeFormatted("NWSYNC10", security.getName(), val.getDisplayText(),
+				val.getNumberFormat().format(price),
+				(price / oldPrice.doubleValue() - 1) * 100);
+
 			val.setNewValue(price);
 			this.changes.add(val);
 			++this.numPricesSet;
-
-			// Change %s price from $%.2f to $%.2f (%+.2f%%).%n
-			writeFormatted("NWSYNC10", security.getName(), oldPrice, price,
-					(price / oldPrice.doubleValue() - 1) * 100);
 		}
 
 	} // end setPrice(CellHandler, CurrencyType)
@@ -180,15 +181,13 @@ public class OdsAccessor {
 		Number oldBalance = val.getValue();
 
 		if ((oldBalance instanceof Double) && balance != oldBalance.doubleValue()) {
+			// Change %s balance from %s to %s.%n
+			writeFormatted("NWSYNC11", keyVal, val.getDisplayText(),
+				val.getNumberFormat().format(balance));
+
 			val.setNewValue(balance);
 			this.changes.add(val);
 			++this.numBalancesSet;
-
-			// Change %s balance from %s to %s.%n
-			NumberFormat nf = val.getNumberFormat();
-			nf.setMaximumFractionDigits(decimalPlaces);
-			writeFormatted("NWSYNC11", keyVal, nf.format(oldBalance.doubleValue()),
-					nf.format(balance));
 		}
 
 	} // end setBalanceIfDiff(CellHandler, Account, String)

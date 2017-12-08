@@ -32,7 +32,9 @@ public abstract class CellHandler {
 		} // end getValue()
 
 		public void setValue(Number value) {
-			this.cell.setValue((Double) value);
+			if (value != null) {
+				this.cell.setValue(value.doubleValue());
+			}
 
 		} // end setValue(Number)
 
@@ -56,7 +58,9 @@ public abstract class CellHandler {
 		} // end getValue()
 
 		public void setValue(Number value) {
-			this.cell.setValue((Double) value);
+			if (value != null) {
+				this.cell.setValue(value.doubleValue());
+			}
 
 		} // end setValue(Number)
 
@@ -84,12 +88,14 @@ public abstract class CellHandler {
 		} // end getValue()
 
 		public void setValue(Number value) {
-			int dateInt = value.intValue();
-			int year = dateInt / 10000;
-			int month = (dateInt % 10000) / 100;
-			int dayOfMonth = dateInt % 100;
-			long dateNum = this.calcDoc.getDateNumber(LocalDate.of(year, month, dayOfMonth));
-			this.cell.setValue(dateNum);
+			if (value != null) {
+				int dateInt = value.intValue();
+				int year = dateInt / 10000;
+				int month = (dateInt % 10000) / 100;
+				int dayOfMonth = dateInt % 100;
+				long dateNum = this.calcDoc.getDateNumber(LocalDate.of(year, month, dayOfMonth));
+				this.cell.setValue(dateNum);
+			}
 
 		} // end setValue(Number)
 
@@ -149,6 +155,7 @@ public abstract class CellHandler {
 	 */
 	public void setNewValue(Number newValue) {
 		this.newValue = newValue;
+		this.calcDoc.addChange(this);
 
 	} // end setNewValue(Number)
 
@@ -156,9 +163,7 @@ public abstract class CellHandler {
 	 * Apply any previously set new value.
 	 */
 	public void applyUpdate() {
-		if (this.newValue != null) {
-			setValue(this.newValue);
-		}
+		setValue(this.newValue);
 
 	} // end applyUpdate()
 

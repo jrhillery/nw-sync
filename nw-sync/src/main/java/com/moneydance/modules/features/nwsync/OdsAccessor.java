@@ -11,7 +11,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -36,7 +35,6 @@ public class OdsAccessor {
 	private StringWriter msgBuffer;
 	private PrintWriter msgWriter;
 
-	private List<CellHandler> changes = new ArrayList<>();
 	private CalcDoc calcDoc = null;
 	private XCellRange dateRow = null;
 	private int latestColumn = 0;
@@ -72,15 +70,12 @@ public class OdsAccessor {
 
 		XEnumeration rowItr = calcDoc.getFirstSheetRowIterator();
 
-		if (!findDateRow(rowItr))
-			return; // can't synchronize without a date row
-
-		if (!findLatestDate())
-			return; // can't synchronize without knowing the latest date
+		if (!findDateRow(rowItr) || !findLatestDate())
+			return; // can't synchronize without a date row and latest date
 
 		while (rowItr.hasMoreElements()) {
-			XCellRange row = CalcDoc.next(XCellRange.class, rowItr);
-			XCell key = CalcDoc.getCellByIndex(row, 0);
+			XCellRange row = CalcDoc.next(XCellRange.class, rowItr); // get next row
+			XCell key = CalcDoc.getCellByIndex(row, 0); // get its first column
 
 			if (CalcDoc.isValueType(key, TEXT) || CalcDoc.isValueType(key, FORMULA)) {
 				String keyVal = CellHandler.asDisplayText(key);
@@ -91,8 +86,7 @@ public class OdsAccessor {
 
 					if (security != null) {
 						// found this row's ticker symbol in Moneydance securities
-						// set the new security price
-						setPrice(val, security);
+						setPriceIfDiff(val, security);
 					} else {
 						Account account = getAccount(keyVal);
 
@@ -138,13 +132,13 @@ public class OdsAccessor {
 	} // end getAccount(String)
 
 	/**
-	 * Set the spreadsheet security price for the latest date found in the
-	 * spreadsheet.
+	 * Set the spreadsheet security price if it differs from Moneydance for the
+	 * latest date found in the spreadsheet.
 	 *
-	 * @param val
-	 * @param security
+	 * @param val the cell to potentially change
+	 * @param security the corresponding Moneydance security data
 	 */
-	private void setPrice(CellHandler val, CurrencyType security) {
+	private void setPriceIfDiff(CellHandler val, CurrencyType security) {
 		// Get the price rounded to the tenth place past the decimal point
 		BigDecimal bd = BigDecimal.valueOf(1 / security.getUserRateByDateInt(this.latestDate));
 		double price = bd.setScale(10, RoundingMode.HALF_EVEN).doubleValue();
@@ -158,18 +152,17 @@ public class OdsAccessor {
 				(price / oldPrice.doubleValue() - 1) * 100);
 
 			val.setNewValue(price);
-			this.changes.add(val);
 			++this.numPricesSet;
 		}
 
-	} // end setPrice(CellHandler, CurrencyType)
+	} // end setPriceIfDiff(CellHandler, CurrencyType)
 
 	/**
 	 * Set the spreadsheet account balance if it differs from Moneydance.
 	 *
-	 * @param val
-	 * @param account
-	 * @param keyVal
+	 * @param val the cell to potentially change
+	 * @param account the corresponding Moneydance account
+	 * @param keyVal the spreadsheet name of this account
 	 */
 	private void setBalanceIfDiff(CellHandler val, Account account, String keyVal) {
 		int decimalPlaces = account.getCurrencyType().getDecimalPlaces();
@@ -186,7 +179,6 @@ public class OdsAccessor {
 				val.getNumberFormat().format(balance));
 
 			val.setNewValue(balance);
-			this.changes.add(val);
 			++this.numBalancesSet;
 		}
 
@@ -200,8 +192,8 @@ public class OdsAccessor {
 	 */
 	private boolean findDateRow(XEnumeration rowIterator) throws OdsException {
 		while (rowIterator.hasMoreElements()) {
-			XCellRange row = CalcDoc.next(XCellRange.class, rowIterator);
-			XCell c = CalcDoc.getCellByIndex(row, 0);
+			XCellRange row = CalcDoc.next(XCellRange.class, rowIterator); // get next row
+			XCell c = CalcDoc.getCellByIndex(row, 0); // get its first column
 
 			if (CalcDoc.isValueType(c, TEXT)
 					&& "Date".equalsIgnoreCase(CellHandler.asDisplayText(c))) {
@@ -253,43 +245,23 @@ public class OdsAccessor {
 	/**
 	 * Commit any changes to the spreadsheet document.
 	 */
-	public void commitChanges() {
+	public void commitChanges() throws OdsException {
 		if (isModified()) {
-			for (CellHandler cHandler : this.changes) {
-				cHandler.applyUpdate();
-			}
-			this.changes.clear();
+			getCalcDoc().commitChanges();
 
-			// write a summary line
-			writeSummary();
+			// Changed %d security price%s and %d account balance%s.%n
+			writeFormatted("NWSYNC12", this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
+				this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s");
 		}
 
 	} // end commitChanges()
 
 	/**
-	 * Write a summary line.
+	 * @return true when the spreadsheet has uncommitted changes in memory
 	 */
-	private void writeSummary() {
-		String date;
-		try {
-			date = CellHandler
-					.asDisplayText(CalcDoc.getCellByIndex(this.dateRow, this.latestColumn));
-		} catch (Exception e) {
-			date = "unknown date";
-		}
+	public boolean isModified() throws OdsException {
 
-		// For %s changed %d security price%s and %d account balance%s.%n
-		writeFormatted("NWSYNC12", date, this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
-				this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s");
-
-	} // end writeSummary()
-
-	/**
-	 * @return True when the spreadsheet has uncommitted changes in memory.
-	 */
-	public boolean isModified() {
-
-		return !this.changes.isEmpty();
+		return this.getCalcDoc().isModified();
 	} // end isModified()
 
 	/**
@@ -340,6 +312,9 @@ public class OdsAccessor {
 		return null;
 	} // end releaseResources()
 
+	/**
+	 * @return our message bundle
+	 */
 	private static ResourceBundle getMsgBundle() {
 		if (msgBundle == null) {
 			try {
@@ -387,6 +362,7 @@ public class OdsAccessor {
 	 */
 	private static String retrieveMessage(String key) {
 		try {
+
 			return getMsgBundle().getString(key);
 		} catch (Exception e) {
 			// just use the key when not found

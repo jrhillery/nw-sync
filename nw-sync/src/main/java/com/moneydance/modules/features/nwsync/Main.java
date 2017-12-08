@@ -69,6 +69,9 @@ public class Main extends FeatureModule {
 		return "NW Sync";
 	} // end getName()
 
+	/**
+	 * Show our console window.
+	 */
 	private synchronized void showConsole() {
 		if (this.messageWindow == null) {
 			this.messageWindow = new MessageWindow(this);
@@ -81,6 +84,9 @@ public class Main extends FeatureModule {
 
 	} // end showConsole()
 
+	/**
+	 * Close our console window and release resources.
+	 */
 	synchronized void closeConsole() {
 		if (this.messageWindow != null)
 			this.messageWindow = this.messageWindow.goAway();

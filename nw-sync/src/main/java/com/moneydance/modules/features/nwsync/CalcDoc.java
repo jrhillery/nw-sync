@@ -7,6 +7,8 @@ import static com.sun.star.table.CellContentType.VALUE;
 import static com.sun.star.uno.UnoRuntime.queryInterface;
 import static com.sun.star.util.NumberFormat.CURRENCY;
 import static com.sun.star.util.NumberFormat.DATE;
+import static com.sun.star.util.NumberFormat.EMPTY;
+import static com.sun.star.util.NumberFormat.UNDEFINED;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 import java.io.InputStream;
@@ -59,9 +61,16 @@ public class CalcDoc {
 	private LocalDate zeroDate;
 
 	private XSpreadsheet firstSheet = null;
+	private List<CellHandler> changes = new ArrayList<>();
+
 	private static Properties nwSyncProps = null;
 	private static boolean classPathUpdated = false;
 
+	/**
+	 * Sole constructor.
+	 *
+	 * @param spreadSheetDoc
+	 */
 	public CalcDoc(XSpreadsheetDocument spreadSheetDoc) throws OdsException {
 		this.spreadSheetDoc = spreadSheetDoc;
 		this.urlString = queryInterface(XModel.class, spreadSheetDoc).getURL();
@@ -87,6 +96,9 @@ public class CalcDoc {
 
 	} // end (XSpreadsheetDocument) constructor
 
+	/**
+	 * @return a list of currently open spreadsheet documents
+	 */
 	public static List<XSpreadsheetDocument> getSpreadsheetDocs() throws OdsException {
 		List<XSpreadsheetDocument> docList = new ArrayList<>();
 		XDesktop2 libreOfficeDesktop = getOfficeDesktop();
@@ -149,9 +161,9 @@ public class CalcDoc {
 	 */
 	private static XDesktop2 getOfficeDesktop() throws OdsException {
 		if (!classPathUpdated) {
-			String officeInstallPath = getNwSyncProps().getProperty("Office.install.path");
+			String officeInstallPath = getNwSyncProps().getProperty("office.install.path");
 			if (officeInstallPath == null)
-				// Unable to obtain Office.install.path from nw-sync.properties on the class path.
+				// Unable to obtain office.install.path from nw-sync.properties on the class path.
 				throw new OdsException(null, "NWSYNC54");
 
 			addOfficeApiToClassPath(Paths.get(officeInstallPath, "program/classes"));
@@ -176,7 +188,7 @@ public class CalcDoc {
 		XDesktop2 libreOfficeDesktop;
 		try {
 			libreOfficeDesktop = queryInterface(XDesktop2.class, remoteServiceMgr
-					.createInstanceWithContext("com.sun.star.frame.Desktop", remoteContext));
+				.createInstanceWithContext("com.sun.star.frame.Desktop", remoteContext));
 		} catch (Exception e) {
 			// Exception obtaining office desktop.
 			throw new OdsException(e, "NWSYNC36");
@@ -212,7 +224,7 @@ public class CalcDoc {
 	} // end closeOfficeConnection()
 
 	/**
-	 * @return the first sheet in the spreadsheet document
+	 * @return a row iterator for the first sheet in the spreadsheet document
 	 */
 	public XEnumeration getFirstSheetRowIterator() throws OdsException {
 		if (this.firstSheet == null) {
@@ -233,6 +245,7 @@ public class CalcDoc {
 				throw new OdsException(null, "NWSYNC40", this.urlString);
 		}
 
+		// get a cursor so we don't iterator over all the empty rows at the bottom
 		XUsedAreaCursor cur = queryInterface(XUsedAreaCursor.class,
 				this.firstSheet.createCursor());
 		if (cur == null)
@@ -273,6 +286,32 @@ public class CalcDoc {
 		return this.zeroDate.until(localDate, DAYS);
 	} // end getDateNumber(LocalDate)
 
+	public void addChange(CellHandler cHandler) {
+		if (cHandler != null) {
+			this.changes.add(cHandler);
+		}
+
+	} // end addChange(CellHandler)
+
+	/**
+	 * Commit any changes to the spreadsheet document.
+	 */
+	public void commitChanges() {
+		for (CellHandler cHandler : this.changes) {
+			cHandler.applyUpdate();
+		}
+		this.changes.clear();
+
+	} // end commitChanges()
+
+	/**
+	 * @return true when the spreadsheet has uncommitted changes in memory
+	 */
+	public boolean isModified() {
+
+		return !this.changes.isEmpty();
+	} // end isModified()
+
 	/**
 	 * @param zInterface
 	 * @param iterator
@@ -307,20 +346,18 @@ public class CalcDoc {
 	 * @return true when the supplied cell has the specified content type
 	 */
 	public static boolean isValueType(XCell cell, CellContentType contentType) {
-		CellContentType type = cell.getType();
 
-		return cell != null && contentType.equals(type);
+		return cell != null && contentType.equals(cell.getType());
 	} // end isValueType(XCell, CellContentType)
 
 	/**
 	 * @param cell
-	 * @param numberFormatType
-	 * @return true if the cell has the specified number format type
+	 * @return the cell's number format type
 	 */
-	private boolean isFormat(XCell cell, short numberFormatType) throws OdsException {
+	private short getNumberFormat(XCell cell) throws OdsException {
 		XPropertySet cellProps = queryInterface(XPropertySet.class, cell);
 		if (cellProps == null)
-			return false;
+			return EMPTY;
 
 		XPropertySet cellNumberFormatProps;
 		try {
@@ -331,15 +368,15 @@ public class CalcDoc {
 			throw new OdsException(e, "NWSYNC46");
 		}
 		if (cellNumberFormatProps == null)
-			return false;
+			return UNDEFINED;
 
 		try {
-			return numberFormatType == (Short) cellNumberFormatProps.getPropertyValue("Type");
+			return (Short) cellNumberFormatProps.getPropertyValue("Type");
 		} catch (Exception e) {
 			// Exception obtaining number format type.
 			throw new OdsException(e, "NWSYNC47");
 		}
-	} // end isFormat(XCell, short)
+	} // end getNumberFormat(XCell)
 
 	/**
 	 * @param row office Row instance
@@ -350,10 +387,12 @@ public class CalcDoc {
 		XCell cell = getCellByIndex(row, index);
 
 		if (isValueType(cell, VALUE)) {
-			if (isFormat(cell, DATE))
+			short numberFormat = getNumberFormat(cell);
+
+			if ((numberFormat & DATE) != 0)
 				return new DateCellHandler(cell, this);
 
-			if (isFormat(cell, CURRENCY))
+			if ((numberFormat & CURRENCY) != 0)
 				return new CurrencyCellHandler(cell, this);
 
 			return new FloatCellHandler(cell, this);
@@ -377,10 +416,13 @@ public class CalcDoc {
 		}
 	} // end getCellByIndex(XCellRange, int)
 
+	/**
+	 * @return our properties
+	 */
 	public static Properties getNwSyncProps() throws OdsException {
 		if (nwSyncProps == null) {
 			InputStream propsAsStream = CalcDoc.class.getClassLoader()
-					.getResourceAsStream("nw-sync.properties");
+				.getResourceAsStream("nw-sync.properties");
 			if (propsAsStream == null)
 				// Unable to find nw-sync.properties on the class path.
 				throw new OdsException(null, "NWSYNC52");
@@ -391,6 +433,12 @@ public class CalcDoc {
 			} catch (Exception e) {
 				// Exception loading nw-sync.properties.
 				throw new OdsException(e, "NWSYNC53");
+			} finally {
+				try {
+					propsAsStream.close();
+				} catch (Exception e) {
+					// ignore
+				}
 			}
 		}
 

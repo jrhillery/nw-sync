@@ -83,12 +83,16 @@ public abstract class CellHandler {
 		 * @return the numeric date value of this cell in decimal form YYYYMMDD
 		 */
 		public Integer getValue() {
-			LocalDate date = this.calcDoc.getLocalDate(this.cell.getValue());
-			int dateInt = date.getYear() * 10000 + date.getMonthValue() * 100
-					+ date.getDayOfMonth();
-
-			return dateInt;
+			return convLocalToDateInt(getDateValue());
 		} // end getValue()
+
+		/**
+		 * @return the local date value of this cell
+		 */
+		public LocalDate getDateValue() {
+
+			return this.calcDoc.getLocalDate(this.cell.getValue());
+		} // end getDateValue()
 
 		/**
 		 * @param value the numeric date value (in decimal form YYYYMMDD) to save in this cell
@@ -210,5 +214,17 @@ public abstract class CellHandler {
 
 		return LocalDate.of(year, month, dayOfMonth);
 	} // end convDateIntToLocal(int)
+
+	/**
+	 * @param date the local date value
+	 * @return the corresponding numeric date value in decimal form YYYYMMDD
+	 */
+	public static int convLocalToDateInt(LocalDate date) {
+		int dateInt = date.getYear() * 10000
+				+ date.getMonthValue() * 100
+				+ date.getDayOfMonth();
+
+		return dateInt;
+	} // end convLocalToDateInt(LocalDate)
 
 } // end class CellHandler

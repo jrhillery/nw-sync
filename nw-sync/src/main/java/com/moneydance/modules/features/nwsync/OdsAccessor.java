@@ -5,6 +5,7 @@ package com.moneydance.modules.features.nwsync;
 
 import static com.infinitekind.moneydance.model.Account.AccountType.CREDIT_CARD;
 import static com.moneydance.modules.features.nwsync.CellHandler.convDateIntToLocal;
+import static com.moneydance.modules.features.nwsync.CellHandler.convLocalToDateInt;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
 import static java.time.format.FormatStyle.MEDIUM;
@@ -30,6 +31,7 @@ import com.infinitekind.moneydance.model.AcctFilter;
 import com.infinitekind.moneydance.model.CurrencySnapshot;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
+import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.container.XEnumeration;
 import com.sun.star.sheet.XSpreadsheetDocument;
 import com.sun.star.table.XCell;
@@ -48,10 +50,10 @@ public class OdsAccessor {
 	private CalcDoc calcDoc = null;
 	private XCellRange dateRow = null;
 	private int latestColumn = 0;
-	private CellHandler latestDateCell = null;
+	private DateCellHandler latestDateCell = null;
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
-	private Map<Integer, List<String>> securitySnapshots = new TreeMap<>();
+	private Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
 
 	private static ResourceBundle msgBundle = null;
 
@@ -180,42 +182,42 @@ public class OdsAccessor {
 	 * @param dateInt
 	 * @return the list of security names for the specified date integer
 	 */
-	private List<String> getSecurityListForDate(Integer dateInt) {
-		List<String> daysSecurities = this.securitySnapshots.get(dateInt);
+	private List<String> getSecurityListForDate(int dateInt) {
+		LocalDate localDate = convDateIntToLocal(dateInt);
+		List<String> daysSecurities = this.securitySnapshots.get(localDate);
 
 		if (daysSecurities == null) {
 			daysSecurities = new ArrayList<>();
-			this.securitySnapshots.put(dateInt, daysSecurities);
+			this.securitySnapshots.put(localDate, daysSecurities);
 		}
 
 		return daysSecurities;
-	} // end getSecurityListForDate(Integer)
+	} // end getSecurityListForDate(int)
 
 	/**
 	 * Analyze security dates to see if they are all the same.
 	 */
 	private void analyzeSecurityDates() throws OdsException {
-		Iterator<Entry<Integer, List<String>>> snapshotsIterator =
+		Iterator<Entry<LocalDate, List<String>>> snapshotsIterator =
 			this.securitySnapshots.entrySet().iterator();
 
 		if (snapshotsIterator.hasNext()) {
-			Entry<Integer, List<String>> snapShotsEntry = snapshotsIterator.next();
-			Integer dateInt = snapShotsEntry.getKey();
+			Entry<LocalDate, List<String>> snapShotsEntry = snapshotsIterator.next();
+			LocalDate localDate = snapShotsEntry.getKey();
 
 			if (!snapshotsIterator.hasNext()) {
 				// must be a single date => use it
-				setDateIfDiff(dateInt);
+				setDateIfDiff(localDate);
 			} else {
 				// have multiple latest dates for security prices
-				writeFormatted("NWSYNC17", convDateIntToLocal(dateInt).format(dateFmt),
-					snapShotsEntry.getValue());
+				writeFormatted("NWSYNC17", localDate.format(dateFmt), snapShotsEntry.getValue());
 
 				while (snapshotsIterator.hasNext()) {
 					snapShotsEntry = snapshotsIterator.next();
-					dateInt = snapShotsEntry.getKey();
+					localDate = snapShotsEntry.getKey();
 
 					// The following security prices were last updated on %s: %s%n
-					writeFormatted("NWSYNC17", convDateIntToLocal(dateInt).format(dateFmt),
+					writeFormatted("NWSYNC17", localDate.format(dateFmt),
 						snapShotsEntry.getValue());
 				} // end while
 			}
@@ -224,14 +226,12 @@ public class OdsAccessor {
 	} // end analyzeSecurityDates()
 
 	/**
-	 * @param dateInt the new date integer to use
+	 * @param localDate the new date to use
 	 */
-	private void setDateIfDiff(Integer dateInt) throws OdsException {
-		Number oldDateInt = this.latestDateCell.getValue();
+	private void setDateIfDiff(LocalDate localDate) throws OdsException {
+		LocalDate oldLocalDate = this.latestDateCell.getDateValue();
 
-		if ((oldDateInt instanceof Integer) && !oldDateInt.equals(dateInt)) {
-			LocalDate localDate = convDateIntToLocal(dateInt.intValue());
-			LocalDate oldLocalDate = convDateIntToLocal(oldDateInt.intValue());
+		if (!localDate.equals(oldLocalDate)) {
 
 			if (localDate.getMonthValue() == oldLocalDate.getMonthValue()
 					&& localDate.getYear() == oldLocalDate.getYear()) {
@@ -239,7 +239,7 @@ public class OdsAccessor {
 				writeFormatted("NWSYNC15", oldLocalDate.format(dateFmt),
 					localDate.format(dateFmt));
 
-				this.latestDateCell.setNewValue(dateInt);
+				this.latestDateCell.setNewValue(convLocalToDateInt(localDate));
 			} else {
 				// A new month column is needed to change date from %s to %s.%n
 				writeFormatted("NWSYNC16", oldLocalDate.format(dateFmt),
@@ -249,7 +249,7 @@ public class OdsAccessor {
 			}
 		}
 
-	} // end setDateIfDiff(Integer)
+	} // end setDateIfDiff(LocalDate)
 
 	/**
 	 * Set the spreadsheet security price if it differs from Moneydance for the
@@ -334,12 +334,13 @@ public class OdsAccessor {
 	 */
 	private boolean findLatestDate() throws OdsException {
 		int cellIndex = 0;
-		CellHandler c = null, latestCell;
+		CellHandler c = null;
 
 		do {
-			latestCell = c;
+			// capture the rightmost date cell handler so far
+			this.latestDateCell = (DateCellHandler) c;
 			c = getCalcDoc().getCellHandlerByIndex(this.dateRow, ++cellIndex);
-		} while (c instanceof CellHandler.DateCellHandler);
+		} while (c instanceof DateCellHandler);
 
 		if (cellIndex == 1) {
 			// Unable to find any dates in the row with 'Date' in first column in %s.%n
@@ -351,11 +352,9 @@ public class OdsAccessor {
 		// capture index of the rightmost date in the date row
 		this.latestColumn = cellIndex - 1;
 
-		// capture capture the corresponding cell handler
-		this.latestDateCell = latestCell;
-
 		// Found date [%s] in %s.%n
-		writeFormatted("NWSYNC13", latestCell.getDisplayText(), getCalcDoc());
+		writeFormatted("NWSYNC13", this.latestDateCell.getDateValue().format(dateFmt),
+			getCalcDoc());
 
 		return true;
 	} // end findLatestDate()

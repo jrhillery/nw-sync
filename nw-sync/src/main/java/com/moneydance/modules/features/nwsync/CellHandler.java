@@ -79,6 +79,9 @@ public abstract class CellHandler {
 
 		} // end (XCell, CalcDoc) constructor
 
+		/**
+		 * @return the numeric date value of this cell in decimal form YYYYMMDD
+		 */
 		public Integer getValue() {
 			LocalDate date = this.calcDoc.getLocalDate(this.cell.getValue());
 			int dateInt = date.getYear() * 10000 + date.getMonthValue() * 100
@@ -87,13 +90,13 @@ public abstract class CellHandler {
 			return dateInt;
 		} // end getValue()
 
+		/**
+		 * @param value the numeric date value (in decimal form YYYYMMDD) to save in this cell
+		 */
 		public void setValue(Number value) {
 			if (value != null) {
-				int dateInt = value.intValue();
-				int year = dateInt / 10000;
-				int month = (dateInt % 10000) / 100;
-				int dayOfMonth = dateInt % 100;
-				long dateNum = this.calcDoc.getDateNumber(LocalDate.of(year, month, dayOfMonth));
+				LocalDate localDate = convDateIntToLocal(value.intValue());
+				long dateNum = this.calcDoc.getDateNumber(localDate);
 				this.cell.setValue(dateNum);
 			}
 
@@ -140,6 +143,7 @@ public abstract class CellHandler {
 	 * @return the formula string of this cell
 	 */
 	public String getFormula() {
+
 		return this.cell.getFormula();
 	} // end getFormula()
 
@@ -147,6 +151,7 @@ public abstract class CellHandler {
 	 * @return the text displayed in this cell
 	 */
 	public String getDisplayText() {
+
 		return asDisplayText(this.cell);
 	} // end getDisplayText()
 
@@ -171,11 +176,17 @@ public abstract class CellHandler {
 	 * @return a string representation of this CellHandler
 	 */
 	public String toString() {
+		StringBuilder sb = new StringBuilder(getDisplayText());
 		XCellAddressable addressable = queryInterface(XCellAddressable.class, this.cell);
 		CellAddress cellAdr = addressable == null ? null : addressable.getCellAddress();
 
-		return cellAdr == null ? super.toString()
-				: "cell[" + cellAdr.Column + ", " + cellAdr.Row + ", " + cellAdr.Sheet + ']';
+		if (cellAdr != null) {
+			sb.append('[').append(cellAdr.Column)
+			  .append(", ").append(cellAdr.Row)
+			  .append(", ").append(cellAdr.Sheet).append(']');
+		}
+
+		return sb.toString();
 	} // end toString()
 
 	/**
@@ -187,5 +198,17 @@ public abstract class CellHandler {
 
 		return cellText == null ? null : cellText.getString();
 	} // end asDisplayText(XCell)
+
+	/**
+	 * @param dateInt the numeric date value in decimal form YYYYMMDD
+	 * @return the corresponding local date
+	 */
+	public static LocalDate convDateIntToLocal(int dateInt) {
+		int year = dateInt / 10000;
+		int month = (dateInt % 10000) / 100;
+		int dayOfMonth = dateInt % 100;
+
+		return LocalDate.of(year, month, dayOfMonth);
+	} // end convDateIntToLocal(int)
 
 } // end class CellHandler

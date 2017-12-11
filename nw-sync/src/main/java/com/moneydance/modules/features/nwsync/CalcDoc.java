@@ -300,9 +300,17 @@ public class CalcDoc {
 		for (CellHandler cHandler : this.changes) {
 			cHandler.applyUpdate();
 		}
-		this.changes.clear();
+		forgetChanges();
 
 	} // end commitChanges()
+
+	/**
+	 * Clear out any pending changes.
+	 */
+	public void forgetChanges() {
+		this.changes.clear();
+
+	} // end forgetChanges()
 
 	/**
 	 * @return true when the spreadsheet has uncommitted changes in memory

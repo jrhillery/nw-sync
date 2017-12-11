@@ -4,20 +4,30 @@
 package com.moneydance.modules.features.nwsync;
 
 import static com.infinitekind.moneydance.model.Account.AccountType.CREDIT_CARD;
+import static com.moneydance.modules.features.nwsync.CellHandler.convDateIntToLocal;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
+import static java.time.format.FormatStyle.MEDIUM;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.ResourceBundle;
+import java.util.TreeMap;
 
 import com.infinitekind.moneydance.model.Account;
 import com.infinitekind.moneydance.model.AccountBook;
 import com.infinitekind.moneydance.model.AcctFilter;
+import com.infinitekind.moneydance.model.CurrencySnapshot;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
 import com.sun.star.container.XEnumeration;
@@ -38,14 +48,16 @@ public class OdsAccessor {
 	private CalcDoc calcDoc = null;
 	private XCellRange dateRow = null;
 	private int latestColumn = 0;
-	private int latestDate = 0;
+	private CellHandler latestDateCell = null;
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
+	private Map<Integer, List<String>> securitySnapshots = new TreeMap<>();
 
 	private static ResourceBundle msgBundle = null;
 
 	private static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages";
 	private static final double [] centMult = {1, 10, 100, 1000, 10000};
+	private static final DateTimeFormatter dateFmt = DateTimeFormatter.ofLocalizedDate(MEDIUM);
 
 	/**
 	 * Sole constructor.
@@ -100,6 +112,7 @@ public class OdsAccessor {
 				}
 			}
 		} // end while
+		analyzeSecurityDates();
 
 	} // end syncNwData()
 
@@ -132,6 +145,113 @@ public class OdsAccessor {
 	} // end getAccount(String)
 
 	/**
+	 * @param rate the Moneydance currency rate for a security
+	 * @return the security price rounded to the tenth place past the decimal point
+	 */
+	private static double convRateToPrice(double rate) {
+		BigDecimal bd = BigDecimal.valueOf(1 / rate);
+
+		return bd.setScale(10, RoundingMode.HALF_EVEN).doubleValue();
+	} // end convRateToPrice(double)
+
+	/**
+	 * @param security
+	 * @return the price in the last snapshot of the supplied security
+	 */
+	private double getLatestPrice(CurrencyType security) {
+		List<CurrencySnapshot> snapShots = security.getSnapshots();
+		CurrencySnapshot latestSnapshot = snapShots.get(snapShots.size() - 1);
+		double price = convRateToPrice(latestSnapshot.getUserRate());
+		double oldPrice = convRateToPrice(security.getUserRate());
+
+		if (price != oldPrice) {
+			security.setUserRate(latestSnapshot.getUserRate());
+
+			// Changed security %s current price from %f to %f.%n
+			System.err.format(retrieveMessage("NWSYNC14"), security.getName(), oldPrice, price);
+		}
+		// add this snapshot to our collection
+		getSecurityListForDate(latestSnapshot.getDateInt()).add(security.getName());
+
+		return price;
+	} // end getLatestUserRate(CurrencyType)
+
+	/**
+	 * @param dateInt
+	 * @return the list of security names for the specified date integer
+	 */
+	private List<String> getSecurityListForDate(Integer dateInt) {
+		List<String> daysSecurities = this.securitySnapshots.get(dateInt);
+
+		if (daysSecurities == null) {
+			daysSecurities = new ArrayList<>();
+			this.securitySnapshots.put(dateInt, daysSecurities);
+		}
+
+		return daysSecurities;
+	} // end getSecurityListForDate(Integer)
+
+	/**
+	 * Analyze security dates to see if they are all the same.
+	 */
+	private void analyzeSecurityDates() throws OdsException {
+		Iterator<Entry<Integer, List<String>>> snapshotsIterator =
+			this.securitySnapshots.entrySet().iterator();
+
+		if (snapshotsIterator.hasNext()) {
+			Entry<Integer, List<String>> snapShotsEntry = snapshotsIterator.next();
+			Integer dateInt = snapShotsEntry.getKey();
+
+			if (!snapshotsIterator.hasNext()) {
+				// must be a single date => use it
+				setDateIfDiff(dateInt);
+			} else {
+				// have multiple latest dates for security prices
+				writeFormatted("NWSYNC17", convDateIntToLocal(dateInt).format(dateFmt),
+					snapShotsEntry.getValue());
+
+				while (snapshotsIterator.hasNext()) {
+					snapShotsEntry = snapshotsIterator.next();
+					dateInt = snapShotsEntry.getKey();
+
+					// The following security prices were last updated on %s: %s%n
+					writeFormatted("NWSYNC17", convDateIntToLocal(dateInt).format(dateFmt),
+						snapShotsEntry.getValue());
+				} // end while
+			}
+		}
+
+	} // end analyzeSecurityDates()
+
+	/**
+	 * @param dateInt the new date integer to use
+	 */
+	private void setDateIfDiff(Integer dateInt) throws OdsException {
+		Number oldDateInt = this.latestDateCell.getValue();
+
+		if ((oldDateInt instanceof Integer) && !oldDateInt.equals(dateInt)) {
+			LocalDate localDate = convDateIntToLocal(dateInt.intValue());
+			LocalDate oldLocalDate = convDateIntToLocal(oldDateInt.intValue());
+
+			if (localDate.getMonthValue() == oldLocalDate.getMonthValue()
+					&& localDate.getYear() == oldLocalDate.getYear()) {
+				// Change rightmost date from %s to %s.%n
+				writeFormatted("NWSYNC15", oldLocalDate.format(dateFmt),
+					localDate.format(dateFmt));
+
+				this.latestDateCell.setNewValue(dateInt);
+			} else {
+				// A new month column is needed to change date from %s to %s.%n
+				writeFormatted("NWSYNC16", oldLocalDate.format(dateFmt),
+					localDate.format(dateFmt));
+
+				getCalcDoc().forgetChanges();
+			}
+		}
+
+	} // end setDateIfDiff(Integer)
+
+	/**
 	 * Set the spreadsheet security price if it differs from Moneydance for the
 	 * latest date found in the spreadsheet.
 	 *
@@ -139,10 +259,7 @@ public class OdsAccessor {
 	 * @param security the corresponding Moneydance security data
 	 */
 	private void setPriceIfDiff(CellHandler val, CurrencyType security) {
-		// Get the price rounded to the tenth place past the decimal point
-		BigDecimal bd = BigDecimal.valueOf(1 / security.getUserRateByDateInt(this.latestDate));
-		double price = bd.setScale(10, RoundingMode.HALF_EVEN).doubleValue();
-
+		double price = getLatestPrice(security);
 		Number oldPrice = val.getValue();
 
 		if ((oldPrice instanceof Double) && price != oldPrice.doubleValue()) {
@@ -210,8 +327,8 @@ public class OdsAccessor {
 	} // end findDateRow(XEnumeration)
 
 	/**
-	 * Capture index of the rightmost date in the supplied row. Also capture this
-	 * date's YYYYMMDD value.
+	 * Capture index of the rightmost date in the date row. Also capture the
+	 * corresponding cell handler.
 	 *
 	 * @return true when found
 	 */
@@ -231,10 +348,11 @@ public class OdsAccessor {
 			return false;
 		}
 
+		// capture index of the rightmost date in the date row
 		this.latestColumn = cellIndex - 1;
 
-		// capture date value in decimal form YYYYMMDD
-		this.latestDate = latestCell.getValue().intValue();
+		// capture capture the corresponding cell handler
+		this.latestDateCell = latestCell;
 
 		// Found date [%s] in %s.%n
 		writeFormatted("NWSYNC13", latestCell.getDisplayText(), getCalcDoc());
@@ -245,9 +363,9 @@ public class OdsAccessor {
 	/**
 	 * Commit any changes to the spreadsheet document.
 	 */
-	public void commitChanges() throws OdsException {
+	public void commitChanges() {
 		if (isModified()) {
-			getCalcDoc().commitChanges();
+			this.calcDoc.commitChanges();
 
 			// Changed %d security price%s and %d account balance%s.%n
 			writeFormatted("NWSYNC12", this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
@@ -259,9 +377,9 @@ public class OdsAccessor {
 	/**
 	 * @return true when the spreadsheet has uncommitted changes in memory
 	 */
-	public boolean isModified() throws OdsException {
+	public boolean isModified() {
 
-		return this.getCalcDoc().isModified();
+		return this.calcDoc != null && this.calcDoc.isModified();
 	} // end isModified()
 
 	/**

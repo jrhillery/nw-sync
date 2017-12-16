@@ -5,6 +5,7 @@ package com.moneydance.modules.features.nwsync;
 
 import static com.sun.star.uno.UnoRuntime.queryInterface;
 
+import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 
@@ -22,6 +23,8 @@ public abstract class CellHandler {
 	 * Provide read and write access to currency spreadsheet cells.
 	 */
 	public static class CurrencyCellHandler extends CellHandler {
+		DecimalFormat currencyFormat = null;
+
 		public CurrencyCellHandler(XCell cell, CalcDoc calcDoc) {
 			super(cell, calcDoc);
 
@@ -39,7 +42,14 @@ public abstract class CellHandler {
 		} // end setValue(Number)
 
 		public NumberFormat getNumberFormat() {
-			return NumberFormat.getCurrencyInstance();
+			if (this.currencyFormat == null) {
+				this.currencyFormat = (DecimalFormat) NumberFormat.getCurrencyInstance();
+				// separate the positive and negative subpattern
+				String[] pattern = this.currencyFormat.toPattern().split(";");
+				// omit the negative subpattern to use the localized minus sign prefix
+				this.currencyFormat.applyPattern(pattern[0]);
+			}
+			return this.currencyFormat;
 		} // end getNumberFormat()
 
 	} // end class CurrencyCellHandler

@@ -8,12 +8,13 @@ import static com.moneydance.modules.features.nwsync.CellHandler.convDateIntToLo
 import static com.moneydance.modules.features.nwsync.CellHandler.convLocalToDateInt;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.format.FormatStyle.MEDIUM;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -139,7 +140,7 @@ public class OdsAccessor {
 
 					return acct.getFullAccountName();
 				} // end format(Account)
-			});
+			}); // end new AcctFilter() {...}
 			account = subs == null || subs.isEmpty() ? null : subs.get(0);
 		}
 
@@ -151,16 +152,26 @@ public class OdsAccessor {
 	 * @return the security price rounded to the tenth place past the decimal point
 	 */
 	private static double convRateToPrice(double rate) {
-		BigDecimal bd = BigDecimal.valueOf(1 / rate);
 
-		return bd.setScale(10, RoundingMode.HALF_EVEN).doubleValue();
+		return roundPrice(1 / rate);
 	} // end convRateToPrice(double)
 
 	/**
+	 * @param price
+	 * @return price rounded to the tenth place past the decimal point
+	 */
+	private static double roundPrice(double price) {
+		BigDecimal bd = BigDecimal.valueOf(price);
+
+		return bd.setScale(10, HALF_EVEN).doubleValue();
+	} // end roundPrice(double)
+
+	/**
 	 * @param security
+	 * @param val
 	 * @return the price in the last snapshot of the supplied security
 	 */
-	private double getLatestPrice(CurrencyType security) {
+	private double getLatestPrice(CurrencyType security, CellHandler val) throws OdsException {
 		List<CurrencySnapshot> snapShots = security.getSnapshots();
 		CurrencySnapshot latestSnapshot = snapShots.get(snapShots.size() - 1);
 		double price = convRateToPrice(latestSnapshot.getUserRate());
@@ -169,14 +180,16 @@ public class OdsAccessor {
 		if (price != oldPrice) {
 			security.setUserRate(latestSnapshot.getUserRate());
 
-			// Changed security %s current price from %f to %f.%n
-			System.err.format(retrieveMessage("NWSYNC14"), security.getName(), oldPrice, price);
+			// Changed security %s current price from %s to %s.%n
+			NumberFormat numberFmt = val.getNumberFormat();
+			System.err.format(retrieveMessage("NWSYNC14"), security.getName(),
+				numberFmt.format(oldPrice), numberFmt.format(price));
 		}
 		// add this snapshot to our collection
 		getSecurityListForDate(latestSnapshot.getDateInt()).add(security.getName());
 
 		return price;
-	} // end getLatestUserRate(CurrencyType)
+	} // end getLatestPrice(CurrencyType, CellHandler)
 
 	/**
 	 * @param dateInt
@@ -258,15 +271,15 @@ public class OdsAccessor {
 	 * @param val the cell to potentially change
 	 * @param security the corresponding Moneydance security data
 	 */
-	private void setPriceIfDiff(CellHandler val, CurrencyType security) {
-		double price = getLatestPrice(security);
+	private void setPriceIfDiff(CellHandler val, CurrencyType security) throws OdsException {
+		double price = getLatestPrice(security, val);
 		Number oldPrice = val.getValue();
 
-		if ((oldPrice instanceof Double) && price != oldPrice.doubleValue()) {
+		if ((oldPrice instanceof Double) && price != roundPrice(oldPrice.doubleValue())) {
 			// Change %s price from %s to %s (%+.2f%%).%n
+			NumberFormat numberFmt = val.getNumberFormat();
 			writeFormatted("NWSYNC10", security.getName(), val.getDisplayText(),
-				val.getNumberFormat().format(price),
-				(price / oldPrice.doubleValue() - 1) * 100);
+				numberFmt.format(price), (price / oldPrice.doubleValue() - 1) * 100);
 
 			val.setNewValue(price);
 			++this.numPricesSet;
@@ -281,7 +294,8 @@ public class OdsAccessor {
 	 * @param account the corresponding Moneydance account
 	 * @param keyVal the spreadsheet name of this account
 	 */
-	private void setBalanceIfDiff(CellHandler val, Account account, String keyVal) {
+	private void setBalanceIfDiff(CellHandler val, Account account, String keyVal)
+			throws OdsException {
 		int decimalPlaces = account.getCurrencyType().getDecimalPlaces();
 		double balance = account.getUserCurrentBalance() / centMult[decimalPlaces];
 

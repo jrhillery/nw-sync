@@ -5,9 +5,7 @@ package com.moneydance.modules.features.nwsync;
 
 import static com.sun.star.table.CellContentType.VALUE;
 import static com.sun.star.uno.UnoRuntime.queryInterface;
-import static com.sun.star.util.NumberFormat.CURRENCY;
 import static com.sun.star.util.NumberFormat.DATE;
-import static com.sun.star.util.NumberFormat.EMPTY;
 import static com.sun.star.util.NumberFormat.UNDEFINED;
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -22,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import com.moneydance.modules.features.nwsync.CellHandler.CurrencyCellHandler;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.moneydance.modules.features.nwsync.CellHandler.FloatCellHandler;
 import com.moneydance.modules.features.nwsync.OdsAccessor.OdsException;
@@ -360,21 +357,31 @@ public class CalcDoc {
 
 	/**
 	 * @param cell
+	 * @return the cell's number format properties
+	 */
+	public XPropertySet getNumberFormatProps(XCell cell) throws OdsException {
+		XPropertySet cellNumberFormatProps = null;
+		XPropertySet cellProps = queryInterface(XPropertySet.class, cell);
+
+		if (cellProps != null) {
+			try {
+				cellNumberFormatProps = this.numberFormats
+					.getByKey((Integer) cellProps.getPropertyValue("NumberFormat"));
+			} catch (Exception e) {
+				// Exception obtaining cell number format.
+				throw new OdsException(e, "NWSYNC46");
+			}
+		}
+
+		return cellNumberFormatProps;
+	} // end getNumberFormatProps(XCell)
+
+	/**
+	 * @param cell
 	 * @return the cell's number format type
 	 */
-	private short getNumberFormat(XCell cell) throws OdsException {
-		XPropertySet cellProps = queryInterface(XPropertySet.class, cell);
-		if (cellProps == null)
-			return EMPTY;
-
-		XPropertySet cellNumberFormatProps;
-		try {
-			cellNumberFormatProps = this.numberFormats
-					.getByKey((Integer) cellProps.getPropertyValue("NumberFormat"));
-		} catch (Exception e) {
-			// Exception obtaining cell number format.
-			throw new OdsException(e, "NWSYNC46");
-		}
+	private short getNumberFormatType(XCell cell) throws OdsException {
+		XPropertySet cellNumberFormatProps = getNumberFormatProps(cell);
 		if (cellNumberFormatProps == null)
 			return UNDEFINED;
 
@@ -384,7 +391,7 @@ public class CalcDoc {
 			// Exception obtaining number format type.
 			throw new OdsException(e, "NWSYNC47");
 		}
-	} // end getNumberFormat(XCell)
+	} // end getNumberFormatType(XCell)
 
 	/**
 	 * @param row office Row instance
@@ -395,15 +402,11 @@ public class CalcDoc {
 		XCell cell = getCellByIndex(row, index);
 
 		if (isValueType(cell, VALUE)) {
-			short numberFormat = getNumberFormat(cell);
+			short numberFormatType = getNumberFormatType(cell);
 
-			if ((numberFormat & DATE) != 0)
-				return new DateCellHandler(cell, this);
-
-			if ((numberFormat & CURRENCY) != 0)
-				return new CurrencyCellHandler(cell, this);
-
-			return new FloatCellHandler(cell, this);
+			return (numberFormatType & DATE) != 0
+				? new DateCellHandler(cell, this)
+				: new FloatCellHandler(cell, this);
 		}
 
 		return null;

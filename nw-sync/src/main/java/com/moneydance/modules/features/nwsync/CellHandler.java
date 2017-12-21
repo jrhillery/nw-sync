@@ -9,6 +9,8 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 
+import com.moneydance.modules.features.nwsync.OdsAccessor.OdsException;
+import com.sun.star.beans.XPropertySet;
 import com.sun.star.sheet.XCellAddressable;
 import com.sun.star.table.CellAddress;
 import com.sun.star.table.XCell;
@@ -18,41 +20,6 @@ import com.sun.star.text.XText;
  * Abstract read and write access to numeric spreadsheet cells.
  */
 public abstract class CellHandler {
-
-	/**
-	 * Provide read and write access to currency spreadsheet cells.
-	 */
-	public static class CurrencyCellHandler extends CellHandler {
-		DecimalFormat currencyFormat = null;
-
-		public CurrencyCellHandler(XCell cell, CalcDoc calcDoc) {
-			super(cell, calcDoc);
-
-		} // end (XCell, CalcDoc) constructor
-
-		public Double getValue() {
-			return this.cell.getValue();
-		} // end getValue()
-
-		public void setValue(Number value) {
-			if (value != null) {
-				this.cell.setValue(value.doubleValue());
-			}
-
-		} // end setValue(Number)
-
-		public NumberFormat getNumberFormat() {
-			if (this.currencyFormat == null) {
-				this.currencyFormat = (DecimalFormat) NumberFormat.getCurrencyInstance();
-				// separate the positive and negative subpattern
-				String[] pattern = this.currencyFormat.toPattern().split(";");
-				// omit the negative subpattern to use the localized minus sign prefix
-				this.currencyFormat.applyPattern(pattern[0]);
-			}
-			return this.currencyFormat;
-		} // end getNumberFormat()
-
-	} // end class CurrencyCellHandler
 
 	/**
 	 * Provide read and write access to floating point spreadsheet cells.
@@ -74,8 +41,11 @@ public abstract class CellHandler {
 
 		} // end setValue(Number)
 
-		public NumberFormat getNumberFormat() {
-			return NumberFormat.getNumberInstance();
+		public NumberFormat getNumberFormat() throws OdsException {
+			if (this.numberFormat == null) {
+				this.numberFormat = createDecimalFormat();
+			}
+			return this.numberFormat;
 		} // end getNumberFormat()
 
 	} // end class FloatCellHandler
@@ -117,13 +87,17 @@ public abstract class CellHandler {
 		} // end setValue(Number)
 
 		public NumberFormat getNumberFormat() {
-			return NumberFormat.getIntegerInstance();
+			if (this.numberFormat == null) {
+				this.numberFormat = (DecimalFormat) NumberFormat.getIntegerInstance();
+			}
+			return this.numberFormat;
 		} // end getNumberFormat()
 
 	} // end class DateCellHandler
 
 	protected XCell cell;
 	protected CalcDoc calcDoc;
+	protected DecimalFormat numberFormat = null;
 	private Number newValue = null;
 
 	/**
@@ -151,7 +125,7 @@ public abstract class CellHandler {
 	/**
 	 * @return a formatter for values in this cell
 	 */
-	public abstract NumberFormat getNumberFormat();
+	public abstract NumberFormat getNumberFormat() throws OdsException;
 
 	/**
 	 * @return the formula string of this cell
@@ -202,6 +176,37 @@ public abstract class CellHandler {
 
 		return sb.toString();
 	} // end toString()
+
+	/**
+	 * @return a decimal format for this cell
+	 */
+	protected DecimalFormat createDecimalFormat() throws OdsException {
+		XPropertySet numberFormatProps = this.calcDoc.getNumberFormatProps(this.cell);
+
+		if (numberFormatProps != null) {
+			String fmtString;
+			try {
+				fmtString = (String) numberFormatProps.getPropertyValue("FormatString");
+			} catch (Exception e) {
+				// Exception obtaining number format string in cell %s.
+				throw new OdsException(e, "NWSYNC55", this);
+			}
+			if (fmtString != null && !fmtString.equals("General")) {
+				// isolate the positive subpattern
+				String[] patternParts = fmtString.split(";");
+				// transform any currency symbols
+				String pattern = patternParts[0].replace("[$$-409]", "$");
+				System.err.println("Spreadsheet format string [" + fmtString
+					+ "]\t Number format pattern [" + pattern + ']');
+				DecimalFormat df = new DecimalFormat();
+				df.applyLocalizedPattern(pattern);
+
+				return df;
+			}
+		}
+
+		return (DecimalFormat) NumberFormat.getNumberInstance();
+	} // end createDecimalFormat()
 
 	/**
 	 * @param cell

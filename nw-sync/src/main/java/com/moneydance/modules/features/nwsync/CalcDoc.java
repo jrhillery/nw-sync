@@ -63,6 +63,8 @@ public class CalcDoc {
 	private static Properties nwSyncProps = null;
 	private static boolean classPathUpdated = false;
 
+	private static final String propertiesFileName = "nw-sync.properties";
+
 	/**
 	 * Sole constructor.
 	 *
@@ -160,8 +162,8 @@ public class CalcDoc {
 		if (!classPathUpdated) {
 			String officeInstallPath = getNwSyncProps().getProperty("office.install.path");
 			if (officeInstallPath == null)
-				// Unable to obtain office.install.path from nw-sync.properties on the class path.
-				throw new OdsException(null, "NWSYNC54");
+				// Unable to obtain office.install.path from %s on the class path.
+				throw new OdsException(null, "NWSYNC54", propertiesFileName);
 
 			addOfficeApiToClassPath(Paths.get(officeInstallPath, "program/classes"));
 			classPathUpdated = true;
@@ -432,24 +434,24 @@ public class CalcDoc {
 	 */
 	public static Properties getNwSyncProps() throws OdsException {
 		if (nwSyncProps == null) {
-			InputStream propsAsStream = CalcDoc.class.getClassLoader()
-				.getResourceAsStream("nw-sync.properties");
-			if (propsAsStream == null)
-				// Unable to find nw-sync.properties on the class path.
-				throw new OdsException(null, "NWSYNC52");
+			InputStream propsStream = CalcDoc.class.getClassLoader()
+				.getResourceAsStream(propertiesFileName);
+			if (propsStream == null)
+				// Unable to find %s on the class path.
+				throw new OdsException(null, "NWSYNC52", propertiesFileName);
 
 			nwSyncProps = new Properties();
 			try {
-				nwSyncProps.load(propsAsStream);
+				nwSyncProps.load(propsStream);
 			} catch (Exception e) {
-				// Exception loading nw-sync.properties.
-				throw new OdsException(e, "NWSYNC53");
+				nwSyncProps = null;
+
+				// Exception loading %s.
+				throw new OdsException(e, "NWSYNC53", propertiesFileName);
 			} finally {
 				try {
-					propsAsStream.close();
-				} catch (Exception e) {
-					// ignore
-				}
+					propsStream.close();
+				} catch (Exception e) { /* ignore */ }
 			}
 		}
 

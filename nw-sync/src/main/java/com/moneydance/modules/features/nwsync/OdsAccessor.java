@@ -117,6 +117,11 @@ public class OdsAccessor {
 		} // end while
 		analyzeSecurityDates();
 
+		if (!isModified()) {
+			// No new price or balance data found.%n
+			writeFormatted("NWSYNC03");
+		}
+
 	} // end syncNwData()
 
 	/**
@@ -253,7 +258,7 @@ public class OdsAccessor {
 					localDate.format(dateFmt));
 
 				this.latestDateCell.setNewValue(convLocalToDateInt(localDate));
-			} else {
+			} else if (localDate.isAfter(oldLocalDate)) {
 				// A new month column is needed to change date from %s to %s.%n
 				writeFormatted("NWSYNC16", oldLocalDate.format(dateFmt),
 					localDate.format(dateFmt));

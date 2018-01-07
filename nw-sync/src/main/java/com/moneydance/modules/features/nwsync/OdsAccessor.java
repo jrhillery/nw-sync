@@ -4,6 +4,8 @@
 package com.moneydance.modules.features.nwsync;
 
 import static com.infinitekind.moneydance.model.Account.AccountType.CREDIT_CARD;
+import static com.johns.swing.util.HTMLPane.CL_DECREASE;
+import static com.johns.swing.util.HTMLPane.CL_INCREASE;
 import static com.moneydance.modules.features.nwsync.CellHandler.convDateIntToLocal;
 import static com.moneydance.modules.features.nwsync.CellHandler.convLocalToDateInt;
 import static com.sun.star.table.CellContentType.FORMULA;
@@ -11,8 +13,6 @@ import static com.sun.star.table.CellContentType.TEXT;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.format.FormatStyle.MEDIUM;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.ResourceBundle;
@@ -43,10 +44,10 @@ import com.sun.star.table.XCellRange;
  * document.
  */
 public class OdsAccessor {
+	private MessageWindow messageWindow;
+	private Locale locale;
 	private Account root;
 	private CurrencyTable securities;
-	private StringWriter msgBuffer;
-	private PrintWriter msgWriter;
 
 	private CalcDoc calcDoc = null;
 	private XCellRange dateRow = null;
@@ -65,15 +66,16 @@ public class OdsAccessor {
 	/**
 	 * Sole constructor.
 	 *
+	 * @param messageWindow
 	 * @param accountBook Moneydance account book
 	 */
-	public OdsAccessor(AccountBook accountBook) {
+	public OdsAccessor(MessageWindow messageWindow, AccountBook accountBook) {
+		this.messageWindow = messageWindow;
+		this.locale = messageWindow.getLocale();
 		this.root = accountBook.getRootAccount();
 		this.securities = accountBook.getCurrencies();
-		this.msgBuffer = new StringWriter();
-		this.msgWriter = new PrintWriter(this.msgBuffer);
 
-	} // end (AccountBook) constructor
+	} // end (MessageWindow, AccountBook) constructor
 
 	/**
 	 * Synchronize data between a spreadsheet document and Moneydance.
@@ -118,7 +120,7 @@ public class OdsAccessor {
 		analyzeSecurityDates();
 
 		if (!isModified()) {
-			// No new price or balance data found.%n
+			// No new price or balance data found.
 			writeFormatted("NWSYNC03");
 		}
 
@@ -187,7 +189,7 @@ public class OdsAccessor {
 
 			// Changed security %s current price from %s to %s.%n
 			NumberFormat numberFmt = val.getNumberFormat();
-			System.err.format(retrieveMessage("NWSYNC14"), security.getName(),
+			System.err.format(this.locale, retrieveMessage("NWSYNC14"), security.getName(),
 				numberFmt.format(oldPrice), numberFmt.format(price));
 		}
 		// add this snapshot to our collection
@@ -234,7 +236,7 @@ public class OdsAccessor {
 					snapShotsEntry = snapshotsIterator.next();
 					localDate = snapShotsEntry.getKey();
 
-					// The following security prices were last updated on %s: %s%n
+					// The following security prices were last updated on %s: %s
 					writeFormatted("NWSYNC17", localDate.format(dateFmt),
 						snapShotsEntry.getValue());
 				} // end while
@@ -253,13 +255,13 @@ public class OdsAccessor {
 
 			if (localDate.getMonthValue() == oldLocalDate.getMonthValue()
 					&& localDate.getYear() == oldLocalDate.getYear()) {
-				// Change rightmost date from %s to %s.%n
+				// Change rightmost date from %s to %s.
 				writeFormatted("NWSYNC15", oldLocalDate.format(dateFmt),
 					localDate.format(dateFmt));
 
 				this.latestDateCell.setNewValue(convLocalToDateInt(localDate));
 			} else if (localDate.isAfter(oldLocalDate)) {
-				// A new month column is needed to change date from %s to %s.%n
+				// A new month column is needed to change date from %s to %s.
 				writeFormatted("NWSYNC16", oldLocalDate.format(dateFmt),
 					localDate.format(dateFmt));
 
@@ -278,16 +280,21 @@ public class OdsAccessor {
 	 */
 	private void setPriceIfDiff(CellHandler val, CurrencyType security) throws OdsException {
 		double price = getLatestPrice(security, val);
-		Number oldPrice = val.getValue();
+		Number oldVal = val.getValue();
 
-		if ((oldPrice instanceof Double) && price != roundPrice(oldPrice.doubleValue())) {
-			// Change %s price from %s to %s (%+.2f%%).%n
-			NumberFormat numberFmt = val.getNumberFormat();
-			writeFormatted("NWSYNC10", security.getName(), val.getDisplayText(),
-				numberFmt.format(price), (price / oldPrice.doubleValue() - 1) * 100);
+		if (oldVal instanceof Double) {
+			double oldPrice = roundPrice(oldVal.doubleValue());
 
-			val.setNewValue(price);
-			++this.numPricesSet;
+			if (price != oldPrice) {
+				// Change %s price from %s to %s (<span class="%s">%+.2f%%</span>).
+				NumberFormat numberFmt = val.getNumberFormat();
+				String spanCl = price < oldPrice ? CL_DECREASE : CL_INCREASE;
+				writeFormatted("NWSYNC10", security.getName(), val.getDisplayText(),
+					numberFmt.format(price), spanCl, (price / oldPrice - 1) * 100);
+
+				val.setNewValue(price);
+				++this.numPricesSet;
+			}
 		}
 
 	} // end setPriceIfDiff(CellHandler, CurrencyType)
@@ -310,7 +317,7 @@ public class OdsAccessor {
 		Number oldBalance = val.getValue();
 
 		if ((oldBalance instanceof Double) && balance != oldBalance.doubleValue()) {
-			// Change %s balance from %s to %s.%n
+			// Change %s balance from %s to %s.
 			writeFormatted("NWSYNC11", keyVal, val.getDisplayText(),
 				val.getNumberFormat().format(balance));
 
@@ -339,7 +346,7 @@ public class OdsAccessor {
 			}
 		} // end while
 
-		// Unable to find row with 'Date' in first column in %s.%n
+		// Unable to find row with 'Date' in first column in %s.
 		writeFormatted("NWSYNC01", getCalcDoc());
 
 		return false;
@@ -362,7 +369,7 @@ public class OdsAccessor {
 		} while (c instanceof DateCellHandler);
 
 		if (cellIndex == 1) {
-			// Unable to find any dates in the row with 'Date' in first column in %s.%n
+			// Unable to find any dates in the row with 'Date' in first column in %s.
 			writeFormatted("NWSYNC02", getCalcDoc());
 
 			return false;
@@ -371,7 +378,7 @@ public class OdsAccessor {
 		// capture index of the rightmost date in the date row
 		this.latestColumn = cellIndex - 1;
 
-		// Found date [%s] in %s.%n
+		// Found date [%s] in %s.
 		writeFormatted("NWSYNC13", this.latestDateCell.getDateValue().format(dateFmt),
 			getCalcDoc());
 
@@ -385,7 +392,7 @@ public class OdsAccessor {
 		if (isModified()) {
 			this.calcDoc.commitChanges();
 
-			// Changed %d security price%s and %d account balance%s.%n
+			// Changed %d security price%s and %d account balance%s.
 			writeFormatted("NWSYNC12", this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
 				this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s");
 		}
@@ -401,14 +408,6 @@ public class OdsAccessor {
 	} // end isModified()
 
 	/**
-	 * @return a string representing accumulated messages
-	 */
-	public String getMessages() {
-
-		return this.msgBuffer.toString();
-	} // end getMessages()
-
-	/**
 	 * @return the currently open spreadsheet document
 	 */
 	private CalcDoc getCalcDoc() throws OdsException {
@@ -417,7 +416,7 @@ public class OdsAccessor {
 
 			switch (docList.size()) {
 			case 0:
-				// No open spreadsheet documents found.%n
+				// No open spreadsheet documents found.
 				writeFormatted("NWSYNC05");
 				break;
 
@@ -427,7 +426,7 @@ public class OdsAccessor {
 				break;
 
 			default:
-				// Found %d open spreadsheet documents. Can only work with one.%n
+				// Found %d open spreadsheet documents. Can only work with one.
 				writeFormatted("NWSYNC04", docList.size());
 				break;
 			}
@@ -511,7 +510,7 @@ public class OdsAccessor {
 	 * @param params Optional array of parameters for the message
 	 */
 	private void writeFormatted(String key, Object... params) {
-		this.msgWriter.format(retrieveMessage(key), params);
+		this.messageWindow.addText(String.format(this.locale, retrieveMessage(key), params));
 
 	} // end writeFormatted(String, Object...)
 

@@ -4,11 +4,10 @@ http://jakarta.apache.org/ant/index.html
 -->
 
 <project name="nwsync" default="all" basedir=".">
-  <property name="version"  value="1.0"/>
   <property name="src" value=".."/>
   <property name="build" value="."/>
   <property name="moneydance.devkit" value="C:/Users/John/Documents/Prog/moneydance-devkit-4.0"/>
-  <property name="thirdparty" value="${src}/../3rdParty"/>
+  <property name="swingutil" value="${src}/../../swingutil/swing-util"/>
   <property name="libreoffice.api" value="C:/Program Files/LibreOffice 5/program/classes"/>
   <property name="privkeyfile" value="${build}/priv_key"/>
   <property name="pubkeyfile" value="${build}/pub_key"/>
@@ -40,13 +39,15 @@ http://jakarta.apache.org/ant/index.html
   </target>
 
   <target name="nwsync" depends="init">
-    <javac srcdir="${src}/src/main/java" debug="${debug}" optimize="${optimize}"
-      classpathref="classpath" destdir="${build}"
-      includes="com/moneydance/modules/features/nwsync/**"/>
+    <javac debug="${debug}" optimize="${optimize}"
+      classpathref="classpath" destdir="${build}">
+    	<src path="${src}/src/main/java"/>
+    	<src path="${swingutil}/src/main/java"/>
+  	</javac>
 
     <jar destfile="${build}/nwsync.mxt">
       <fileset dir="${src}/src/main/resources" includes="**"/>
-      <fileset dir="${build}" includes="com/moneydance/modules/features/nwsync/**"/>
+      <fileset dir="${build}" includes="com/**"/>
     </jar>
 
     <java classname="com.moneydance.admin.KeyAdmin"
@@ -59,6 +60,7 @@ http://jakarta.apache.org/ant/index.html
       <arg line="${build}/nwsync.mxt"/>
     </java>
   	<delete file="${build}/nwsync.mxt"/>
+  	<delete dir="${build}/com"/>
     <move file="s-nwsync.mxt" tofile="${dist}/nwsync.mxt"/>
   </target>
 

@@ -14,15 +14,15 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 
+import com.johns.swing.util.HTMLPane;
 import com.moneydance.awt.AwtUtil;
 
 public class MessageWindow extends JFrame implements ActionListener {
 	private Main feature;
-	private JTextArea messageArea;
+	private HTMLPane messageArea;
 	private JButton commitButton;
 	private JButton closeButton;
 
@@ -32,8 +32,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 		super(feature.getName() + " Console");
 		this.feature = feature;
 
-		this.messageArea = new JTextArea(feature.getName() + " loading...");
-		this.messageArea.setEditable(false);
+		this.messageArea = new HTMLPane();
 		this.commitButton = new JButton("Commit Changes");
 		this.closeButton = new JButton("Done");
 
@@ -53,10 +52,21 @@ public class MessageWindow extends JFrame implements ActionListener {
 
 	} // end (Main) constructor
 
-	public void setText(String text) {
-		this.messageArea.setText(text);
+	/**
+	 * @param text HTML text to append to the output log text area
+	 */
+	public void addText(String text) {
+		this.messageArea.addText(text);
 
-	} // end setText(String)
+	} // end addText(String)
+
+	/**
+	 * Clear the output log text area.
+	 */
+	public void clearText() {
+		this.messageArea.clearText();
+
+	} // end clearText()
 
 	public void enableCommitButton(boolean b) {
 		this.commitButton.setEnabled(b);

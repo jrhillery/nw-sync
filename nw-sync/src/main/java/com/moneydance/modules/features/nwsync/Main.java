@@ -32,15 +32,14 @@ public class Main extends FeatureModule {
 				+ System.getProperty("java.class.path"));
 		showConsole();
 
-		this.odsAcc = new OdsAccessor(getContext().getCurrentAccountBook());
+		this.odsAcc = new OdsAccessor(this.messageWindow, getContext().getCurrentAccountBook());
 		try {
-			this.odsAcc.syncNwData();
-			this.messageWindow.setText(this.odsAcc.getMessages());
+			synchronized (this.odsAcc) {
+				this.odsAcc.syncNwData();
+			}
 			this.messageWindow.enableCommitButton(this.odsAcc.isModified());
 		} catch (Throwable e) {
-			this.messageWindow.setText(this.odsAcc.getMessages() + e);
-			this.messageWindow.enableCommitButton(false);
-			e.printStackTrace(System.err);
+			handleException(e);
 		}
 
 	} // end invoke(String)
@@ -50,14 +49,22 @@ public class Main extends FeatureModule {
 	 */
 	void commitChanges() {
 		try {
-			this.odsAcc.commitChanges();
-			this.messageWindow.setText(this.odsAcc.getMessages());
+			synchronized (this.odsAcc) {
+				this.odsAcc.commitChanges();
+			}
 			this.messageWindow.enableCommitButton(this.odsAcc.isModified());
 		} catch (Throwable e) {
-			e.printStackTrace(System.err);
+			handleException(e);
 		}
 
 	} // end commitChanges()
+
+	private void handleException(Throwable e) {
+		this.messageWindow.addText(e.toString());
+		this.messageWindow.enableCommitButton(false);
+		e.printStackTrace(System.err);
+
+	} // end handleException(Throwable)
 
 	public void cleanup() {
 		closeConsole();

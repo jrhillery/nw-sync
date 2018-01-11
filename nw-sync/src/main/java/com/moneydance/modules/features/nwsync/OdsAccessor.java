@@ -6,19 +6,14 @@ package com.moneydance.modules.features.nwsync;
 import static com.infinitekind.moneydance.model.Account.AccountType.CREDIT_CARD;
 import static com.johns.swing.util.HTMLPane.CL_DECREASE;
 import static com.johns.swing.util.HTMLPane.CL_INCREASE;
-import static com.moneydance.modules.features.nwsync.CellHandler.convDateIntToLocal;
-import static com.moneydance.modules.features.nwsync.CellHandler.convLocalToDateInt;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
-import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.format.FormatStyle.MEDIUM;
 
-import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -29,10 +24,10 @@ import java.util.TreeMap;
 
 import com.infinitekind.moneydance.model.Account;
 import com.infinitekind.moneydance.model.AccountBook;
-import com.infinitekind.moneydance.model.AcctFilter;
 import com.infinitekind.moneydance.model.CurrencySnapshot;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
+import com.johns.moneydance.util.MdUtil;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.container.XEnumeration;
 import com.sun.star.sheet.XSpreadsheetDocument;
@@ -60,7 +55,6 @@ public class OdsAccessor {
 	private static ResourceBundle msgBundle = null;
 
 	private static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages";
-	private static final double [] centMult = {1, 10, 100, 1000, 10000};
 	private static final DateTimeFormatter dateFmt = DateTimeFormatter.ofLocalizedDate(MEDIUM);
 
 	/**
@@ -135,75 +129,32 @@ public class OdsAccessor {
 		Account account = this.root.getAccountByName(actNames[0]);
 
 		if (account != null && actNames.length > 1) {
-			List<Account> subs = account.getSubAccounts(new AcctFilter() {
-
-				public boolean matches(Account acct) {
-					String accountName = acct.getAccountName();
-
-					return accountName.equalsIgnoreCase(actNames[1]);
-				} // end matches(Account)
-
-				public String format(Account acct) {
-
-					return acct.getFullAccountName();
-				} // end format(Account)
-			}); // end new AcctFilter() {...}
-			account = subs == null || subs.isEmpty() ? null : subs.get(0);
+			account = MdUtil.getSubAccountByName(account, actNames[1]);
 		}
 
 		return account;
 	} // end getAccount(String)
 
 	/**
-	 * @param rate the Moneydance currency rate for a security
-	 * @return the security price rounded to the tenth place past the decimal point
-	 */
-	private static double convRateToPrice(double rate) {
-
-		return roundPrice(1 / rate);
-	} // end convRateToPrice(double)
-
-	/**
-	 * @param price
-	 * @return price rounded to the tenth place past the decimal point
-	 */
-	private static double roundPrice(double price) {
-		BigDecimal bd = BigDecimal.valueOf(price);
-
-		return bd.setScale(10, HALF_EVEN).doubleValue();
-	} // end roundPrice(double)
-
-	/**
 	 * @param security
-	 * @param val
+	 * @param priceFmt
 	 * @return the price in the last snapshot of the supplied security
 	 */
-	private double getLatestPrice(CurrencyType security, CellHandler val) throws OdsException {
-		List<CurrencySnapshot> snapShots = security.getSnapshots();
-		CurrencySnapshot latestSnapshot = snapShots.get(snapShots.size() - 1);
-		double price = convRateToPrice(latestSnapshot.getUserRate());
-		double oldPrice = convRateToPrice(security.getUserRate());
+	private double getLatestPrice(CurrencyType security, NumberFormat priceFmt) {
+		CurrencySnapshot latestSnapshot = MdUtil.getLatestSnapshot(security);
 
-		if (price != oldPrice) {
-			security.setUserRate(latestSnapshot.getUserRate());
-
-			// Changed security %s current price from %s to %s.%n
-			NumberFormat numberFmt = val.getNumberFormat();
-			System.err.format(this.locale, retrieveMessage("NWSYNC14"), security.getName(),
-				numberFmt.format(oldPrice), numberFmt.format(price));
-		}
 		// add this snapshot to our collection
 		getSecurityListForDate(latestSnapshot.getDateInt()).add(security.getName());
 
-		return price;
-	} // end getLatestPrice(CurrencyType, CellHandler)
+		return MdUtil.validateCurrentUserRate(security, latestSnapshot, priceFmt);
+	} // end getLatestPrice(CurrencyType, NumberFormat)
 
 	/**
 	 * @param dateInt
 	 * @return the list of security names for the specified date integer
 	 */
 	private List<String> getSecurityListForDate(int dateInt) {
-		LocalDate localDate = convDateIntToLocal(dateInt);
+		LocalDate localDate = MdUtil.convDateIntToLocal(dateInt);
 		List<String> daysSecurities = this.securitySnapshots.get(localDate);
 
 		if (daysSecurities == null) {
@@ -259,7 +210,7 @@ public class OdsAccessor {
 				writeFormatted("NWSYNC15", oldLocalDate.format(dateFmt),
 					localDate.format(dateFmt));
 
-				this.latestDateCell.setNewValue(convLocalToDateInt(localDate));
+				this.latestDateCell.setNewValue(MdUtil.convLocalToDateInt(localDate));
 			} else if (localDate.isAfter(oldLocalDate)) {
 				// A new month column is needed to change date from %s to %s.
 				writeFormatted("NWSYNC16", oldLocalDate.format(dateFmt),
@@ -279,18 +230,18 @@ public class OdsAccessor {
 	 * @param security the corresponding Moneydance security data
 	 */
 	private void setPriceIfDiff(CellHandler val, CurrencyType security) throws OdsException {
-		double price = getLatestPrice(security, val);
+		NumberFormat priceFmt = val.getNumberFormat();
+		double price = getLatestPrice(security, priceFmt);
 		Number oldVal = val.getValue();
 
 		if (oldVal instanceof Double) {
-			double oldPrice = roundPrice(oldVal.doubleValue());
+			double oldPrice = MdUtil.roundPrice(oldVal.doubleValue());
 
 			if (price != oldPrice) {
 				// Change %s price from %s to %s (<span class="%s">%+.2f%%</span>).
-				NumberFormat numberFmt = val.getNumberFormat();
 				String spanCl = price < oldPrice ? CL_DECREASE : CL_INCREASE;
 				writeFormatted("NWSYNC10", security.getName(), val.getDisplayText(),
-					numberFmt.format(price), spanCl, (price / oldPrice - 1) * 100);
+					priceFmt.format(price), spanCl, (price / oldPrice - 1) * 100);
 
 				val.setNewValue(price);
 				++this.numPricesSet;
@@ -308,8 +259,7 @@ public class OdsAccessor {
 	 */
 	private void setBalanceIfDiff(CellHandler val, Account account, String keyVal)
 			throws OdsException {
-		int decimalPlaces = account.getCurrencyType().getDecimalPlaces();
-		double balance = account.getUserCurrentBalance() / centMult[decimalPlaces];
+		double balance = MdUtil.getCurrentBalance(account);
 
 		if (account.getAccountType() == CREDIT_CARD) {
 			balance = -balance;
@@ -452,21 +402,7 @@ public class OdsAccessor {
 	 */
 	private static ResourceBundle getMsgBundle() {
 		if (msgBundle == null) {
-			try {
-				msgBundle = ResourceBundle.getBundle(baseMessageBundleName);
-			} catch (Exception e) {
-				System.err.format("Unable to load message bundle %s. %s%n", baseMessageBundleName, e);
-				msgBundle = new ResourceBundle() {
-					protected Object handleGetObject(String key) {
-						// just use the key since we have no message bundle
-						return key;
-					}
-
-					public Enumeration<String> getKeys() {
-						return null;
-					}
-				};
-			} // end catch
+			msgBundle = MdUtil.getMsgBundle(baseMessageBundleName);
 		}
 
 		return msgBundle;

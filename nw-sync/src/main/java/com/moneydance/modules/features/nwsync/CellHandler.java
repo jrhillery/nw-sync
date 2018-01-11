@@ -9,6 +9,7 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 
+import com.johns.moneydance.util.MdUtil;
 import com.moneydance.modules.features.nwsync.OdsAccessor.OdsException;
 import com.sun.star.beans.XPropertySet;
 import com.sun.star.sheet.XCellAddressable;
@@ -63,7 +64,7 @@ public abstract class CellHandler {
 		 * @return the numeric date value of this cell in decimal form YYYYMMDD
 		 */
 		public Integer getValue() {
-			return convLocalToDateInt(getDateValue());
+			return MdUtil.convLocalToDateInt(getDateValue());
 		} // end getValue()
 
 		/**
@@ -79,7 +80,7 @@ public abstract class CellHandler {
 		 */
 		public void setValue(Number value) {
 			if (value != null) {
-				LocalDate localDate = convDateIntToLocal(value.intValue());
+				LocalDate localDate = MdUtil.convDateIntToLocal(value.intValue());
 				long dateNum = this.calcDoc.getDateNumber(localDate);
 				this.cell.setValue(dateNum);
 			}
@@ -217,29 +218,5 @@ public abstract class CellHandler {
 
 		return cellText == null ? null : cellText.getString();
 	} // end asDisplayText(XCell)
-
-	/**
-	 * @param dateInt the numeric date value in decimal form YYYYMMDD
-	 * @return the corresponding local date
-	 */
-	public static LocalDate convDateIntToLocal(int dateInt) {
-		int year = dateInt / 10000;
-		int month = (dateInt % 10000) / 100;
-		int dayOfMonth = dateInt % 100;
-
-		return LocalDate.of(year, month, dayOfMonth);
-	} // end convDateIntToLocal(int)
-
-	/**
-	 * @param date the local date value
-	 * @return the corresponding numeric date value in decimal form YYYYMMDD
-	 */
-	public static int convLocalToDateInt(LocalDate date) {
-		int dateInt = date.getYear() * 10000
-				+ date.getMonthValue() * 100
-				+ date.getDayOfMonth();
-
-		return dateInt;
-	} // end convLocalToDateInt(LocalDate)
 
 } // end class CellHandler

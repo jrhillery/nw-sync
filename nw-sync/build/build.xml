@@ -7,7 +7,8 @@ http://jakarta.apache.org/ant/index.html
   <property name="src" value=".."/>
   <property name="build" value="."/>
   <property name="moneydance.devkit" value="C:/Users/John/Documents/Prog/moneydance-devkit-4.0"/>
-  <property name="swingutil" value="${src}/../../swingutil/swing-util"/>
+  <property name="mdutil" value="${src}/../../mdutil/md-util"/>
+  <property name="swingutil" value="${src}/../../mdutil/swing-util"/>
   <property name="libreoffice.api" value="C:/Program Files/LibreOffice 5/program/classes"/>
   <property name="privkeyfile" value="${build}/priv_key"/>
   <property name="pubkeyfile" value="${build}/pub_key"/>
@@ -43,6 +44,7 @@ http://jakarta.apache.org/ant/index.html
       classpathref="classpath" destdir="${build}">
     	<src path="${src}/src/main/java"/>
     	<src path="${swingutil}/src/main/java"/>
+    	<src path="${mdutil}/src/main/java"/>
   	</javac>
 
     <jar destfile="${build}/nwsync.mxt">

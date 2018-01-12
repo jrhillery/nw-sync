@@ -197,8 +197,6 @@ public abstract class CellHandler {
 				String[] patternParts = fmtString.split(";");
 				// transform any currency symbols
 				String pattern = patternParts[0].replace("[$$-409]", "$");
-				// System.err.println("Spreadsheet format string [" + fmtString
-				// + "]\t Number format pattern [" + pattern + ']');
 				DecimalFormat df = new DecimalFormat();
 				df.applyLocalizedPattern(pattern);
 

@@ -285,6 +285,11 @@ public class CalcDoc {
 		return this.zeroDate.until(localDate, DAYS);
 	} // end getDateNumber(LocalDate)
 
+	/**
+	 * Add a cell handler to our list of changes.
+	 *
+	 * @param cHandler
+	 */
 	public void addChange(CellHandler cHandler) {
 		if (cHandler != null) {
 			this.changes.add(cHandler);
@@ -352,10 +357,10 @@ public class CalcDoc {
 	 * @param contentType
 	 * @return true when the supplied cell has the specified content type
 	 */
-	public static boolean isValueType(XCell cell, CellContentType contentType) {
+	public static boolean isContentType(XCell cell, CellContentType contentType) {
 
 		return cell != null && contentType.equals(cell.getType());
-	} // end isValueType(XCell, CellContentType)
+	} // end isContentType(XCell, CellContentType)
 
 	/**
 	 * @param cell
@@ -403,7 +408,7 @@ public class CalcDoc {
 	public CellHandler getCellHandlerByIndex(XCellRange row, int index) throws OdsException {
 		XCell cell = getCellByIndex(row, index);
 
-		if (isValueType(cell, VALUE)) {
+		if (isContentType(cell, VALUE)) {
 			short numberFormatType = getNumberFormatType(cell);
 
 			return (numberFormatType & DATE) != 0

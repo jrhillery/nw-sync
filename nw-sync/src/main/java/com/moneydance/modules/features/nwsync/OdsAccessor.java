@@ -88,7 +88,7 @@ public class OdsAccessor {
 			XCellRange row = CalcDoc.next(XCellRange.class, rowItr); // get next row
 			XCell key = CalcDoc.getCellByIndex(row, 0); // get its first column
 
-			if (CalcDoc.isValueType(key, TEXT) || CalcDoc.isValueType(key, FORMULA)) {
+			if (CalcDoc.isContentType(key, TEXT) || CalcDoc.isContentType(key, FORMULA)) {
 				String keyVal = CellHandler.asDisplayText(key);
 				CellHandler val = calcDoc.getCellHandlerByIndex(row, this.latestColumn);
 
@@ -288,7 +288,7 @@ public class OdsAccessor {
 			XCellRange row = CalcDoc.next(XCellRange.class, rowIterator); // get next row
 			XCell c = CalcDoc.getCellByIndex(row, 0); // get its first column
 
-			if (CalcDoc.isValueType(c, TEXT)
+			if (CalcDoc.isContentType(c, TEXT)
 					&& "Date".equalsIgnoreCase(CellHandler.asDisplayText(c))) {
 				this.dateRow = row;
 

@@ -28,13 +28,17 @@ public class Main extends FeatureModule {
 	 * @see com.moneydance.apps.md.controller.FeatureModule#invoke(java.lang.String)
 	 */
 	public void invoke(String uri) {
-		System.err.println(getName() + " invoked with uri [" + uri + "] and class path "
-				+ System.getProperty("java.class.path"));
+		System.err.println(getName() + " invoked with uri [" + uri + ']');
 		showConsole();
 
-		this.odsAcc = new OdsAccessor(this.messageWindow, getContext().getCurrentAccountBook());
+		if (this.odsAcc == null) {
+			this.odsAcc = new OdsAccessor(this.messageWindow,
+				getContext().getCurrentAccountBook());
+		}
 		try {
 			synchronized (this.odsAcc) {
+				this.messageWindow.clearText();
+				this.odsAcc.forgetChanges();
 				this.odsAcc.syncNwData();
 			}
 			this.messageWindow.enableCommitButton(this.odsAcc.isModified());

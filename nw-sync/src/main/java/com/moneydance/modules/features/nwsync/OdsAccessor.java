@@ -347,10 +347,24 @@ public class OdsAccessor {
 				this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s");
 		}
 
+		forgetChanges();
+
 	} // end commitChanges()
 
 	/**
-	 * @return true when the spreadsheet has uncommitted changes in memory
+	 * Clear out any pending changes.
+	 */
+	public void forgetChanges() {
+		if (this.calcDoc != null) {
+			this.calcDoc.forgetChanges();
+		}
+		this.numPricesSet = 0;
+		this.numBalancesSet = 0;
+
+	} // end forgetChanges()
+
+	/**
+	 * @return true when we have uncommitted changes in memory
 	 */
 	public boolean isModified() {
 

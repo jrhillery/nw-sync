@@ -304,7 +304,6 @@ public class CalcDoc {
 		for (CellHandler cHandler : this.changes) {
 			cHandler.applyUpdate();
 		}
-		forgetChanges();
 
 	} // end commitChanges()
 

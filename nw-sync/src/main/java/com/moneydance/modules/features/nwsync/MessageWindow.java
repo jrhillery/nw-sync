@@ -3,60 +3,155 @@
  */
 package com.moneydance.modules.features.nwsync;
 
+import static javax.swing.GroupLayout.DEFAULT_SIZE;
+
 import java.awt.AWTEvent;
-import java.awt.GridBagLayout;
+import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
+import java.io.InputStream;
 
-import javax.swing.Box;
+import javax.imageio.ImageIO;
+import javax.swing.GroupLayout;
+import javax.swing.GroupLayout.Alignment;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 
 import com.johns.swing.util.HTMLPane;
-import com.moneydance.awt.AwtUtil;
 
 public class MessageWindow extends JFrame implements ActionListener {
 	private Main feature;
-	private HTMLPane messageArea;
-	private JButton commitButton;
-	private JButton closeButton;
+	private JButton btnCommit;
+	private HTMLPane pnOutputLog;
 
 	private static final long serialVersionUID = -3229995555109327972L;
 
+	/**
+	 * Create the frame.
+	 *
+	 * @param feature
+	 */
 	public MessageWindow(Main feature) {
-		super(feature.getName() + " Console");
+		super((feature == null ? "Message" : feature.getName()) + " Console");
 		this.feature = feature;
 
-		this.messageArea = new HTMLPane();
-		this.commitButton = new JButton("Commit Changes");
-		this.closeButton = new JButton("Done");
-
-		JPanel p = new JPanel(new GridBagLayout());
-		p.setBorder(new EmptyBorder(10, 10, 10, 10));
-		p.add(new JScrollPane(this.messageArea), AwtUtil.getConstraints(0, 0, 1, 1, 4, 1, true, true));
-		p.add(Box.createVerticalStrut(8), AwtUtil.getConstraints(0, 2, 0, 0, 1, 1, false, false));
-		p.add(this.commitButton, AwtUtil.getConstraints(0, 3, 1, 0, 1, 1, false, true));
-		p.add(this.closeButton, AwtUtil.getConstraints(1, 3, 1, 0, 1, 1, false, true));
-		getContentPane().add(p);
-
-		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		enableEvents(WindowEvent.WINDOW_CLOSING);
-		this.commitButton.addActionListener(this);
-		this.closeButton.addActionListener(this);
-		setSize(560, 360);
+		initComponents();
+		wireEvents();
+		readIconImage();
 
 	} // end (Main) constructor
+
+	/**
+	 * Initialize the swing components.
+	 */
+	private void initComponents() {
+		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+		setSize(576, 356);
+		JPanel contentPane = new JPanel();
+		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		setContentPane(contentPane);
+
+		this.btnCommit = new JButton("Commit Changes");
+		this.btnCommit.setEnabled(false);
+		reducePreferredHeight(this.btnCommit);
+		this.btnCommit.setToolTipText("Commit changes to the spreadsheet");
+
+		this.pnOutputLog = new HTMLPane();
+		JScrollPane scrollPane = new JScrollPane(this.pnOutputLog);
+		GroupLayout gl_contentPane = new GroupLayout(contentPane);
+		gl_contentPane.setHorizontalGroup(
+			gl_contentPane.createParallelGroup(Alignment.TRAILING)
+				.addGroup(gl_contentPane.createSequentialGroup()
+					.addContainerGap(403, Short.MAX_VALUE)
+					.addComponent(this.btnCommit))
+				.addComponent(scrollPane, DEFAULT_SIZE, 532, Short.MAX_VALUE)
+		);
+		gl_contentPane.setVerticalGroup(
+			gl_contentPane.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_contentPane.createSequentialGroup()
+					.addComponent(this.btnCommit)
+					.addPreferredGap(ComponentPlacement.RELATED)
+					.addComponent(scrollPane, DEFAULT_SIZE, 1000, Short.MAX_VALUE))
+		);
+		contentPane.setLayout(gl_contentPane);
+
+	} // end initComponents()
+
+	/**
+	 * @param button
+	 */
+	private void reducePreferredHeight(JComponent button) {
+		Dimension buttonDim = button.getPreferredSize();
+		final int preferredHeight = 20;
+
+		if (buttonDim.height > preferredHeight) {
+			buttonDim.height = preferredHeight;
+			button.setPreferredSize(buttonDim);
+		}
+		buttonDim = button.getMinimumSize();
+
+		if (buttonDim.height > preferredHeight) {
+			buttonDim.height = preferredHeight;
+			button.setMinimumSize(buttonDim);
+		}
+
+	} // end reducePreferredHeight(JComponent)
+
+	/**
+	 * Wire in our event listeners.
+	 */
+	private void wireEvents() {
+		this.btnCommit.addActionListener(this);
+
+	} // end wireEvents()
+
+	/**
+	 * Read in and set our icon image.
+	 */
+	private void readIconImage() {
+		InputStream stream = getClass().getResourceAsStream("update-icon24.png");
+
+		if (stream != null) {
+			try {
+				setIconImage(ImageIO.read(stream));
+			} catch (Exception e) {
+				System.err.println("Exception reading icon image" + e);
+			} finally {
+				try {
+					stream.close();
+				} catch (Exception e) { /* ignore */ }
+			}
+		}
+
+	} // end readIconImage()
+
+	/**
+	 * Invoked when an action occurs.
+	 *
+	 * @param event
+	 */
+	public void actionPerformed(ActionEvent event) {
+		Object source = event.getSource();
+
+		if (source == this.btnCommit && this.feature != null) {
+			this.feature.commitChanges();
+		}
+
+	} // end actionPerformed(ActionEvent)
 
 	/**
 	 * @param text HTML text to append to the output log text area
 	 */
 	public void addText(String text) {
-		this.messageArea.addText(text);
+		this.pnOutputLog.addText(text);
 
 	} // end addText(String)
 
@@ -64,42 +159,63 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 * Clear the output log text area.
 	 */
 	public void clearText() {
-		this.messageArea.clearText();
+		this.pnOutputLog.clearText();
 
 	} // end clearText()
 
+	/**
+	 * @param b true to enable the button, otherwise false
+	 */
 	public void enableCommitButton(boolean b) {
-		this.commitButton.setEnabled(b);
+		this.btnCommit.setEnabled(b);
 
 	} // end enableCommitButton(boolean)
 
-	public void actionPerformed(ActionEvent event) {
-		Object source = event.getSource();
-
-		if (source == this.commitButton) {
-			this.feature.commitChanges();
-		}
-
-		if (source == this.closeButton) {
-			this.feature.closeConsole();
-		}
-
-	} // end actionPerformed(ActionEvent)
-
+	/**
+	 * Processes events on this window.
+	 *
+	 * @param event
+	 */
 	protected void processEvent(AWTEvent event) {
 		if (event.getID() == WindowEvent.WINDOW_CLOSING) {
-			this.feature.closeConsole();
+			if (this.feature != null) {
+				this.feature.closeConsole();
+			} else {
+				goAway();
+			}
 		} else {
 			super.processEvent(event);
 		}
 
 	} // end processEvent(AWTEvent)
 
+	/**
+	 * Remove this frame.
+	 *
+	 * @return null
+	 */
 	public MessageWindow goAway() {
 		setVisible(false);
 		dispose();
 
 		return null;
 	} // end goAway()
+
+	/**
+	 * Launch the application.
+	 */
+	public static void main(String[] args) {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					MessageWindow frame = new MessageWindow(null);
+					frame.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+
+	} // end main(String[])
 
 } // end class MessageWindow

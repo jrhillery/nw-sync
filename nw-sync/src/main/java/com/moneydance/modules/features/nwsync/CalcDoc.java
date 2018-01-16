@@ -52,12 +52,11 @@ import com.sun.star.util.XNumberFormatsSupplier;
  */
 public class CalcDoc {
 
-	private XSpreadsheetDocument spreadSheetDoc;
+	private XSpreadsheetDocument spreadsheetDoc;
 	private String urlString;
 	private XNumberFormats numberFormats;
 	private LocalDate zeroDate;
 
-	private XSpreadsheet firstSheet = null;
 	private List<CellHandler> changes = new ArrayList<>();
 
 	private static Properties nwSyncProps = null;
@@ -68,14 +67,14 @@ public class CalcDoc {
 	/**
 	 * Sole constructor.
 	 *
-	 * @param spreadSheetDoc
+	 * @param spreadsheetDoc
 	 */
-	public CalcDoc(XSpreadsheetDocument spreadSheetDoc) throws OdsException {
-		this.spreadSheetDoc = spreadSheetDoc;
-		this.urlString = queryInterface(XModel.class, spreadSheetDoc).getURL();
-		this.numberFormats = queryInterface(XNumberFormatsSupplier.class, spreadSheetDoc)
-				.getNumberFormats();
-		XPropertySet docProps = queryInterface(XPropertySet.class, spreadSheetDoc);
+	public CalcDoc(XSpreadsheetDocument spreadsheetDoc) throws OdsException {
+		this.spreadsheetDoc = spreadsheetDoc;
+		this.urlString = queryInterface(XModel.class, spreadsheetDoc).getURL();
+		this.numberFormats = queryInterface(XNumberFormatsSupplier.class, spreadsheetDoc)
+			.getNumberFormats();
+		XPropertySet docProps = queryInterface(XPropertySet.class, spreadsheetDoc);
 		if (docProps == null)
 			// Unable to obtain properties for %s.
 			throw new OdsException(null, "NWSYNC30", this.urlString);
@@ -226,27 +225,24 @@ public class CalcDoc {
 	 * @return a row iterator for the first sheet in the spreadsheet document
 	 */
 	public XEnumeration getFirstSheetRowIterator() throws OdsException {
-		if (this.firstSheet == null) {
-			XIndexAccess sheetIndex = queryInterface(XIndexAccess.class,
-					this.spreadSheetDoc.getSheets());
-			if (sheetIndex == null)
-				// Unable to index sheets in %s.
-				throw new OdsException(null, "NWSYNC38", this.urlString);
+		XIndexAccess sheetIndex = getSheets();
+		if (sheetIndex == null)
+			// Unable to index sheets in %s.
+			throw new OdsException(null, "NWSYNC38", this.urlString);
+		XSpreadsheet firstSheet;
 
-			try {
-				this.firstSheet = queryInterface(XSpreadsheet.class, sheetIndex.getByIndex(0));
-			} catch (Exception e) {
-				// Exception obtaining first sheet in %s.
-				throw new OdsException(e, "NWSYNC39", this.urlString);
-			}
-			if (this.firstSheet == null)
-				// Unable to obtain first sheet in %s.
-				throw new OdsException(null, "NWSYNC40", this.urlString);
+		try {
+			firstSheet = queryInterface(XSpreadsheet.class, sheetIndex.getByIndex(0));
+		} catch (Exception e) {
+			// Exception obtaining first sheet in %s.
+			throw new OdsException(e, "NWSYNC39", this.urlString);
 		}
+		if (firstSheet == null)
+			// Unable to obtain first sheet in %s.
+			throw new OdsException(null, "NWSYNC40", this.urlString);
 
 		// get a cursor so we don't iterator over all the empty rows at the bottom
-		XUsedAreaCursor cur = queryInterface(XUsedAreaCursor.class,
-				this.firstSheet.createCursor());
+		XUsedAreaCursor cur = queryInterface(XUsedAreaCursor.class, firstSheet.createCursor());
 		if (cur == null)
 			// Unable to get cursor in %s.
 			throw new OdsException(null, "NWSYNC41", this.urlString);
@@ -266,6 +262,14 @@ public class CalcDoc {
 
 		return rowAccess.createEnumeration();
 	} // end getFirstSheetRowIterator()
+
+	/**
+	 * @return the index access of the sheets in our spreadsheet document
+	 */
+	public XIndexAccess getSheets() {
+
+		return queryInterface(XIndexAccess.class, this.spreadsheetDoc.getSheets());
+	} // end getSheets()
 
 	/**
 	 * @param dateNum date value in spreadsheet cell

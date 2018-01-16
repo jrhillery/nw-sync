@@ -76,6 +76,12 @@ public class OdsAccessor {
 	 */
 	public void syncNwData() throws OdsException {
 		CalcDoc calcDoc = getCalcDoc();
+
+		if (calcDoc != null && calcDoc.getSheets() == null) {
+			// can't access the sheets, force a reconnect
+			this.calcDoc = null;
+			calcDoc = getCalcDoc();
+		}
 		if (calcDoc == null)
 			return; // nothing to synchronize
 

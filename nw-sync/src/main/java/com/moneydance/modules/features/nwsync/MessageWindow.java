@@ -6,7 +6,6 @@ package com.moneydance.modules.features.nwsync;
 import static javax.swing.GroupLayout.DEFAULT_SIZE;
 
 import java.awt.AWTEvent;
-import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -79,7 +78,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 				.addGroup(gl_contentPane.createSequentialGroup()
 					.addComponent(this.btnCommit)
 					.addPreferredGap(ComponentPlacement.RELATED)
-					.addComponent(scrollPane, DEFAULT_SIZE, 1000, Short.MAX_VALUE))
+					.addComponent(scrollPane, DEFAULT_SIZE, 271, Short.MAX_VALUE))
 		);
 		contentPane.setLayout(gl_contentPane);
 
@@ -89,19 +88,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 * @param button
 	 */
 	private void reducePreferredHeight(JComponent button) {
-		Dimension buttonDim = button.getPreferredSize();
-		final int preferredHeight = 20;
-
-		if (buttonDim.height > preferredHeight) {
-			buttonDim.height = preferredHeight;
-			button.setPreferredSize(buttonDim);
-		}
-		buttonDim = button.getMinimumSize();
-
-		if (buttonDim.height > preferredHeight) {
-			buttonDim.height = preferredHeight;
-			button.setMinimumSize(buttonDim);
-		}
+		HTMLPane.reduceHeight(button, 20);
 
 	} // end reducePreferredHeight(JComponent)
 

@@ -4,8 +4,8 @@
 package com.moneydance.modules.features.nwsync;
 
 import static com.infinitekind.moneydance.model.Account.AccountType.CREDIT_CARD;
-import static com.johns.swing.util.HTMLPane.CL_DECREASE;
-import static com.johns.swing.util.HTMLPane.CL_INCREASE;
+import static com.leastlogic.swing.util.HTMLPane.CL_DECREASE;
+import static com.leastlogic.swing.util.HTMLPane.CL_INCREASE;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
 import static java.time.format.FormatStyle.MEDIUM;
@@ -27,9 +27,9 @@ import com.infinitekind.moneydance.model.AccountBook;
 import com.infinitekind.moneydance.model.CurrencySnapshot;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
-import com.johns.moneydance.util.MdUtil;
-import com.johns.moneydance.util.MduException;
-import com.johns.moneydance.util.MessageBundleProvider;
+import com.leastlogic.moneydance.util.MdUtil;
+import com.leastlogic.moneydance.util.MduException;
+import com.leastlogic.moneydance.util.MessageBundleProvider;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.container.XEnumeration;
 import com.sun.star.sheet.XSpreadsheetDocument;

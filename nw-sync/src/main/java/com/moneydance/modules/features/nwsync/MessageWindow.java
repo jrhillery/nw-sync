@@ -22,7 +22,7 @@ import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 
-import com.johns.swing.util.HTMLPane;
+import com.leastlogic.swing.util.HTMLPane;
 
 public class MessageWindow extends JFrame implements ActionListener {
 	private Main feature;

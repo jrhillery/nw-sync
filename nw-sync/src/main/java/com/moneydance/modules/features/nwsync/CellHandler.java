@@ -9,8 +9,8 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 
-import com.johns.moneydance.util.MdUtil;
-import com.johns.moneydance.util.MduException;
+import com.leastlogic.moneydance.util.MdUtil;
+import com.leastlogic.moneydance.util.MduException;
 import com.sun.star.beans.XPropertySet;
 import com.sun.star.sheet.XCellAddressable;
 import com.sun.star.table.CellAddress;

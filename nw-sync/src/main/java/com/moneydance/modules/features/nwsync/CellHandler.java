@@ -10,7 +10,7 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 
 import com.johns.moneydance.util.MdUtil;
-import com.moneydance.modules.features.nwsync.OdsAccessor.OdsException;
+import com.johns.moneydance.util.MduException;
 import com.sun.star.beans.XPropertySet;
 import com.sun.star.sheet.XCellAddressable;
 import com.sun.star.table.CellAddress;
@@ -42,7 +42,7 @@ public abstract class CellHandler {
 
 		} // end setValue(Number)
 
-		public NumberFormat getNumberFormat() throws OdsException {
+		public NumberFormat getNumberFormat() throws MduException {
 			if (this.numberFormat == null) {
 				this.numberFormat = createDecimalFormat();
 			}
@@ -126,7 +126,7 @@ public abstract class CellHandler {
 	/**
 	 * @return a formatter for values in this cell
 	 */
-	public abstract NumberFormat getNumberFormat() throws OdsException;
+	public abstract NumberFormat getNumberFormat() throws MduException;
 
 	/**
 	 * @return the formula string of this cell
@@ -181,7 +181,7 @@ public abstract class CellHandler {
 	/**
 	 * @return a decimal format for this cell
 	 */
-	protected DecimalFormat createDecimalFormat() throws OdsException {
+	protected DecimalFormat createDecimalFormat() throws MduException {
 		XPropertySet numberFormatProps = this.calcDoc.getNumberFormatProps(this.cell);
 
 		if (numberFormatProps != null) {
@@ -190,7 +190,7 @@ public abstract class CellHandler {
 				fmtString = (String) numberFormatProps.getPropertyValue("FormatString");
 			} catch (Exception e) {
 				// Exception obtaining number format string in cell %s.
-				throw new OdsException(e, "NWSYNC55", this);
+				throw this.calcDoc.asException(e, "NWSYNC55", this);
 			}
 			if (fmtString != null && !fmtString.equals("General")) {
 				// isolate the positive subpattern

@@ -28,6 +28,8 @@ import com.infinitekind.moneydance.model.CurrencySnapshot;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
 import com.johns.moneydance.util.MdUtil;
+import com.johns.moneydance.util.MduException;
+import com.johns.moneydance.util.MessageBundleProvider;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.container.XEnumeration;
 import com.sun.star.sheet.XSpreadsheetDocument;
@@ -38,7 +40,7 @@ import com.sun.star.table.XCellRange;
  * Provides read/write access to an ods (OpenOffice/LibreOffice) spreadsheet
  * document.
  */
-public class OdsAccessor {
+public class OdsAccessor implements MessageBundleProvider {
 	private MessageWindow messageWindow;
 	private Locale locale;
 	private Account root;
@@ -51,8 +53,7 @@ public class OdsAccessor {
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
 	private Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
-
-	private static ResourceBundle msgBundle = null;
+	private ResourceBundle msgBundle = null;
 
 	private static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages";
 	private static final DateTimeFormatter dateFmt = DateTimeFormatter.ofLocalizedDate(MEDIUM);
@@ -74,7 +75,7 @@ public class OdsAccessor {
 	/**
 	 * Synchronize data between a spreadsheet document and Moneydance.
 	 */
-	public void syncNwData() throws OdsException {
+	public void syncNwData() throws MduException {
 		CalcDoc calcDoc = getCalcDoc();
 
 		if (calcDoc != null && calcDoc.getSheets() == null) {
@@ -87,12 +88,12 @@ public class OdsAccessor {
 
 		XEnumeration rowItr = calcDoc.getFirstSheetRowIterator();
 
-		if (!findDateRow(rowItr) || !findLatestDate())
+		if (!findDateRow(rowItr, calcDoc) || !findLatestDate())
 			return; // can't synchronize without a date row and latest date
 
 		while (rowItr.hasMoreElements()) {
 			XCellRange row = CalcDoc.next(XCellRange.class, rowItr); // get next row
-			XCell key = CalcDoc.getCellByIndex(row, 0); // get its first column
+			XCell key = calcDoc.getCellByIndex(row, 0); // get its first column
 
 			if (CalcDoc.isContentType(key, TEXT) || CalcDoc.isContentType(key, FORMULA)) {
 				String keyVal = CellHandler.asDisplayText(key);
@@ -174,7 +175,7 @@ public class OdsAccessor {
 	/**
 	 * Analyze security dates to see if they are all the same.
 	 */
-	private void analyzeSecurityDates() throws OdsException {
+	private void analyzeSecurityDates() throws MduException {
 		Iterator<Entry<LocalDate, List<String>>> snapshotsIterator =
 			this.securitySnapshots.entrySet().iterator();
 
@@ -205,7 +206,7 @@ public class OdsAccessor {
 	/**
 	 * @param localDate the new date to use
 	 */
-	private void setDateIfDiff(LocalDate localDate) throws OdsException {
+	private void setDateIfDiff(LocalDate localDate) throws MduException {
 		LocalDate oldLocalDate = this.latestDateCell.getDateValue();
 
 		if (!localDate.equals(oldLocalDate)) {
@@ -235,7 +236,7 @@ public class OdsAccessor {
 	 * @param val the cell to potentially change
 	 * @param security the corresponding Moneydance security data
 	 */
-	private void setPriceIfDiff(CellHandler val, CurrencyType security) throws OdsException {
+	private void setPriceIfDiff(CellHandler val, CurrencyType security) throws MduException {
 		NumberFormat priceFmt = val.getNumberFormat();
 		double price = getLatestPrice(security, priceFmt);
 		Number oldVal = val.getValue();
@@ -264,7 +265,7 @@ public class OdsAccessor {
 	 * @param keyVal the spreadsheet name of this account
 	 */
 	private void setBalanceIfDiff(CellHandler val, Account account, String keyVal)
-			throws OdsException {
+			throws MduException {
 		double balance = MdUtil.getCurrentBalance(account);
 
 		if (account.getAccountType() == CREDIT_CARD) {
@@ -287,12 +288,14 @@ public class OdsAccessor {
 	 * Capture row with 'Date' in first column.
 	 *
 	 * @param rowIterator
+	 * @param calcDoc
 	 * @return true when found
 	 */
-	private boolean findDateRow(XEnumeration rowIterator) throws OdsException {
+	private boolean findDateRow(XEnumeration rowIterator, CalcDoc calcDoc)
+			throws MduException {
 		while (rowIterator.hasMoreElements()) {
 			XCellRange row = CalcDoc.next(XCellRange.class, rowIterator); // get next row
-			XCell c = CalcDoc.getCellByIndex(row, 0); // get its first column
+			XCell c = calcDoc.getCellByIndex(row, 0); // get its first column
 
 			if (CalcDoc.isContentType(c, TEXT)
 					&& "Date".equalsIgnoreCase(CellHandler.asDisplayText(c))) {
@@ -314,7 +317,7 @@ public class OdsAccessor {
 	 *
 	 * @return true when found
 	 */
-	private boolean findLatestDate() throws OdsException {
+	private boolean findLatestDate() throws MduException {
 		int cellIndex = 0;
 		CellHandler c = null;
 
@@ -380,9 +383,9 @@ public class OdsAccessor {
 	/**
 	 * @return the currently open spreadsheet document
 	 */
-	private CalcDoc getCalcDoc() throws OdsException {
+	private CalcDoc getCalcDoc() throws MduException {
 		if (this.calcDoc == null) {
-			List<XSpreadsheetDocument> docList = CalcDoc.getSpreadsheetDocs();
+			List<XSpreadsheetDocument> docList = CalcDoc.getSpreadsheetDocs(this);
 
 			switch (docList.size()) {
 			case 0:
@@ -392,7 +395,7 @@ public class OdsAccessor {
 
 			case 1:
 				// found one => use it
-				this.calcDoc = new CalcDoc(docList.get(0));
+				this.calcDoc = new CalcDoc(docList.get(0), this);
 				break;
 
 			default:
@@ -420,38 +423,19 @@ public class OdsAccessor {
 	/**
 	 * @return our message bundle
 	 */
-	private static ResourceBundle getMsgBundle() {
-		if (msgBundle == null) {
-			msgBundle = MdUtil.getMsgBundle(baseMessageBundleName);
+	private ResourceBundle getMsgBundle() {
+		if (this.msgBundle == null) {
+			this.msgBundle = MdUtil.getMsgBundle(baseMessageBundleName, this.locale);
 		}
 
-		return msgBundle;
+		return this.msgBundle;
 	} // end getMsgBundle()
-
-	/**
-	 * Inner class to house exceptions.
-	 */
-	public static class OdsException extends Exception {
-
-		private static final long serialVersionUID = -9019657124886615063L;
-
-		/**
-		 * @param cause Exception that caused this (null if none)
-		 * @param key The resource bundle key (or message)
-		 * @param params Optional parameters for the detail message
-		 */
-		public OdsException(Throwable cause, String key, Object... params) {
-			super(String.format(retrieveMessage(key), params), cause);
-
-		} // end (Throwable, String, Object...) constructor
-
-	} // end class OdsException
 
 	/**
 	 * @param key The resource bundle key (or message)
 	 * @return message for this key
 	 */
-	private static String retrieveMessage(String key) {
+	public String retrieveMessage(String key) {
 		try {
 
 			return getMsgBundle().getString(key);

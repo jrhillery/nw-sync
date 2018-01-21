@@ -20,9 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+import com.johns.moneydance.util.MduException;
+import com.johns.moneydance.util.MessageBundleProvider;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.moneydance.modules.features.nwsync.CellHandler.FloatCellHandler;
-import com.moneydance.modules.features.nwsync.OdsAccessor.OdsException;
 import com.sun.star.beans.XPropertySet;
 import com.sun.star.bridge.XBridge;
 import com.sun.star.bridge.XBridgeFactory;
@@ -53,6 +54,7 @@ import com.sun.star.util.XNumberFormatsSupplier;
 public class CalcDoc {
 
 	private XSpreadsheetDocument spreadsheetDoc;
+	private MessageBundleProvider msgProvider;
 	private String urlString;
 	private XNumberFormats numberFormats;
 	private LocalDate zeroDate;
@@ -67,39 +69,44 @@ public class CalcDoc {
 	/**
 	 * Sole constructor.
 	 *
-	 * @param spreadsheetDoc
+	 * @param spreadsheetDoc Spreadsheet document
+	 * @param msgProvider Message bundle provider
 	 */
-	public CalcDoc(XSpreadsheetDocument spreadsheetDoc) throws OdsException {
+	public CalcDoc(XSpreadsheetDocument spreadsheetDoc,
+			MessageBundleProvider msgProvider) throws MduException {
 		this.spreadsheetDoc = spreadsheetDoc;
+		this.msgProvider = msgProvider;
 		this.urlString = queryInterface(XModel.class, spreadsheetDoc).getURL();
 		this.numberFormats = queryInterface(XNumberFormatsSupplier.class, spreadsheetDoc)
 			.getNumberFormats();
 		XPropertySet docProps = queryInterface(XPropertySet.class, spreadsheetDoc);
 		if (docProps == null)
 			// Unable to obtain properties for %s.
-			throw new OdsException(null, "NWSYNC30", this.urlString);
+			throw asException(null, "NWSYNC30", this.urlString);
 
 		Date nullDate;
 		try {
 			nullDate = (Date) docProps.getPropertyValue("NullDate");
 		} catch (Exception e) {
 			// Exception obtaining NullDate for %s.
-			throw new OdsException(e, "NWSYNC31", this.urlString);
+			throw asException(e, "NWSYNC31", this.urlString);
 		}
 		if (nullDate == null)
 			// Unable to obtain NullDate for %s.
-			throw new OdsException(null, "NWSYNC32", this.urlString);
+			throw asException(null, "NWSYNC32", this.urlString);
 
 		this.zeroDate = LocalDate.of(nullDate.Year, nullDate.Month, nullDate.Day);
 
 	} // end (XSpreadsheetDocument) constructor
 
 	/**
+	 * @param msgProvider Message bundle provider
 	 * @return a list of currently open spreadsheet documents
 	 */
-	public static List<XSpreadsheetDocument> getSpreadsheetDocs() throws OdsException {
+	public static List<XSpreadsheetDocument> getSpreadsheetDocs(
+			MessageBundleProvider msgProvider) throws MduException {
 		List<XSpreadsheetDocument> docList = new ArrayList<>();
-		XDesktop2 libreOfficeDesktop = getOfficeDesktop();
+		XDesktop2 libreOfficeDesktop = getOfficeDesktop(msgProvider);
 		XEnumeration compItr = libreOfficeDesktop.getComponents().createEnumeration();
 
 		if (!compItr.hasMoreElements()) {
@@ -123,65 +130,71 @@ public class CalcDoc {
 	 * LibreOffice jar files. Need to use reflection since the
 	 * URLClassLoader.addURL(URL) method is protected.
 	 *
-	 * @param officePath location of the installed LibreOffice jar files
+	 * @param officePath Location of the installed LibreOffice jar files
+	 * @param msgProvider Message bundle provider
 	 */
-	private static void addOfficeApiToClassPath(Path officePath) throws OdsException {
+	private static void addOfficeApiToClassPath(Path officePath,
+			MessageBundleProvider msgProvider) throws MduException {
 		URLClassLoader sysClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
 		Method addURL;
 		try {
 			addURL = URLClassLoader.class.getDeclaredMethod("addURL", new Class[] { URL.class });
 		} catch (Exception e) {
 			// Exception obtaining class loader addURL method.
-			throw new OdsException(e, "NWSYNC49");
+			throw asException(e, msgProvider, "NWSYNC49");
 		}
 		addURL.setAccessible(true);
-		for (String apiJar : new String[] { "juh.jar", "jurt.jar", "ridl.jar", "unoil.jar",
-				"unoloader.jar" }) {
+		for (String apiJar : new String[] {
+				"juh.jar", "jurt.jar", "ridl.jar", "unoil.jar", "unoloader.jar" }) {
 			URL apiUrl;
 			try {
 				apiUrl = officePath.resolve(apiJar).toUri().toURL();
 			} catch (Exception e) {
 				// Exception obtaining URL to jar %s in path %s.
-				throw new OdsException(e, "NWSYNC50", apiJar, officePath);
+				throw asException(e, msgProvider, "NWSYNC50", apiJar, officePath);
 			}
 			try {
 				addURL.invoke(sysClassLoader, apiUrl);
 			} catch (Exception e) {
 				// Exception adding %s to class path.
-				throw new OdsException(e, "NWSYNC51", apiUrl);
+				throw asException(e, msgProvider, "NWSYNC51", apiUrl);
 			}
 		} // end for
 
 	} // end addOfficeApiToClassPath(Path)
 
 	/**
+	 * @param msgProvider Message bundle provider
 	 * @return a LibreOffice desktop interface
 	 */
-	private static XDesktop2 getOfficeDesktop() throws OdsException {
+	private static XDesktop2 getOfficeDesktop(MessageBundleProvider msgProvider)
+			throws MduException {
 		if (!classPathUpdated) {
-			String officeInstallPath = getNwSyncProps().getProperty("office.install.path");
+			String officeInstallPath = getNwSyncProps(msgProvider)
+				.getProperty("office.install.path");
 			if (officeInstallPath == null)
 				// Unable to obtain office.install.path from %s on the class path.
-				throw new OdsException(null, "NWSYNC54", propertiesFileName);
+				throw asException(null, msgProvider, "NWSYNC54", propertiesFileName);
 
-			addOfficeApiToClassPath(Paths.get(officeInstallPath, "program/classes"));
+			addOfficeApiToClassPath(Paths.get(officeInstallPath, "program", "classes"),
+				msgProvider);
 			classPathUpdated = true;
 		}
 		XComponentContext remoteContext;
 		try {
 			remoteContext = Bootstrap.bootstrap();
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			// Exception obtaining office context.
-			throw new OdsException(e, "NWSYNC33");
+			throw asException(e, msgProvider, "NWSYNC33");
 		}
 		if (remoteContext == null)
 			// Unable to obtain office context.
-			throw new OdsException(null, "NWSYNC34");
+			throw asException(null, msgProvider, "NWSYNC34");
 
 		XMultiComponentFactory remoteServiceMgr = remoteContext.getServiceManager();
 		if (remoteServiceMgr == null)
 			// Unable to obtain office service manager.
-			throw new OdsException(null, "NWSYNC35");
+			throw asException(null, msgProvider, "NWSYNC35");
 
 		XDesktop2 libreOfficeDesktop;
 		try {
@@ -189,11 +202,11 @@ public class CalcDoc {
 				.createInstanceWithContext("com.sun.star.frame.Desktop", remoteContext));
 		} catch (Exception e) {
 			// Exception obtaining office desktop.
-			throw new OdsException(e, "NWSYNC36");
+			throw asException(e, msgProvider, "NWSYNC36");
 		}
 		if (libreOfficeDesktop == null)
 			// Unable to obtain office desktop.
-			throw new OdsException(null, "NWSYNC37");
+			throw asException(null, msgProvider, "NWSYNC37");
 
 		return libreOfficeDesktop;
 	} // end getOfficeDesktop()
@@ -224,41 +237,41 @@ public class CalcDoc {
 	/**
 	 * @return a row iterator for the first sheet in the spreadsheet document
 	 */
-	public XEnumeration getFirstSheetRowIterator() throws OdsException {
+	public XEnumeration getFirstSheetRowIterator() throws MduException {
 		XIndexAccess sheetIndex = getSheets();
 		if (sheetIndex == null)
 			// Unable to index sheets in %s.
-			throw new OdsException(null, "NWSYNC38", this.urlString);
+			throw asException(null, "NWSYNC38", this.urlString);
 		XSpreadsheet firstSheet;
 
 		try {
 			firstSheet = queryInterface(XSpreadsheet.class, sheetIndex.getByIndex(0));
 		} catch (Exception e) {
 			// Exception obtaining first sheet in %s.
-			throw new OdsException(e, "NWSYNC39", this.urlString);
+			throw asException(e, "NWSYNC39", this.urlString);
 		}
 		if (firstSheet == null)
 			// Unable to obtain first sheet in %s.
-			throw new OdsException(null, "NWSYNC40", this.urlString);
+			throw asException(null, "NWSYNC40", this.urlString);
 
 		// get a cursor so we don't iterator over all the empty rows at the bottom
 		XUsedAreaCursor cur = queryInterface(XUsedAreaCursor.class, firstSheet.createCursor());
 		if (cur == null)
 			// Unable to get cursor in %s.
-			throw new OdsException(null, "NWSYNC41", this.urlString);
+			throw asException(null, "NWSYNC41", this.urlString);
 
 		cur.gotoStartOfUsedArea(false); // set the range to a single cell
 		cur.gotoEndOfUsedArea(true); // expand range to include all used area
 		XColumnRowRange colRowRange = queryInterface(XColumnRowRange.class, cur);
 		if (colRowRange == null)
 			// Unable to get column row range in %s.
-			throw new OdsException(null, "NWSYNC42", this.urlString);
+			throw asException(null, "NWSYNC42", this.urlString);
 
 		XEnumerationAccess rowAccess = queryInterface(XEnumerationAccess.class,
 				colRowRange.getRows());
 		if (rowAccess == null)
 			// Unable to get row enumeration access in %s.
-			throw new OdsException(null, "NWSYNC43", this.urlString);
+			throw asException(null, "NWSYNC43", this.urlString);
 
 		return rowAccess.createEnumeration();
 	} // end getFirstSheetRowIterator()
@@ -332,17 +345,17 @@ public class CalcDoc {
 	 * @param iterator
 	 * @return the next zInterface from the iterator
 	 */
-	public static <T> T next(Class<T> zInterface, XEnumeration iterator) throws OdsException {
+	public static <T> T next(Class<T> zInterface, XEnumeration iterator) throws MduException {
 		T rslt;
 		try {
 			rslt = queryInterface(zInterface, iterator.nextElement());
 		} catch (Exception e) {
-			// Exception iterating to next %s.
-			throw new OdsException(e, "NWSYNC44", zInterface.getSimpleName());
+			throw new MduException(e, "Exception iterating to next %s.",
+				zInterface.getSimpleName());
 		}
 		if (rslt == null)
-			// Unable to obtain next %s.
-			throw new OdsException(null, "NWSYNC45", zInterface.getSimpleName());
+			throw new MduException(null, "Unable to obtain next %s.",
+				zInterface.getSimpleName());
 
 		return rslt;
 	} // end next(Class<T>, XEnumeration)
@@ -369,7 +382,7 @@ public class CalcDoc {
 	 * @param cell
 	 * @return the cell's number format properties
 	 */
-	public XPropertySet getNumberFormatProps(XCell cell) throws OdsException {
+	public XPropertySet getNumberFormatProps(XCell cell) throws MduException {
 		XPropertySet cellNumberFormatProps = null;
 		XPropertySet cellProps = queryInterface(XPropertySet.class, cell);
 
@@ -379,7 +392,7 @@ public class CalcDoc {
 					.getByKey((Integer) cellProps.getPropertyValue("NumberFormat"));
 			} catch (Exception e) {
 				// Exception obtaining cell number format.
-				throw new OdsException(e, "NWSYNC46");
+				throw asException(e, "NWSYNC46");
 			}
 		}
 
@@ -390,7 +403,7 @@ public class CalcDoc {
 	 * @param cell
 	 * @return the cell's number format type
 	 */
-	private short getNumberFormatType(XCell cell) throws OdsException {
+	private short getNumberFormatType(XCell cell) throws MduException {
 		XPropertySet cellNumberFormatProps = getNumberFormatProps(cell);
 		if (cellNumberFormatProps == null)
 			return UNDEFINED;
@@ -399,7 +412,7 @@ public class CalcDoc {
 			return (Short) cellNumberFormatProps.getPropertyValue("Type");
 		} catch (Exception e) {
 			// Exception obtaining number format type.
-			throw new OdsException(e, "NWSYNC47");
+			throw asException(e, "NWSYNC47");
 		}
 	} // end getNumberFormatType(XCell)
 
@@ -408,7 +421,7 @@ public class CalcDoc {
 	 * @param index
 	 * @return CellHandler instance for the cell at zero-based index in the supplied row
 	 */
-	public CellHandler getCellHandlerByIndex(XCellRange row, int index) throws OdsException {
+	public CellHandler getCellHandlerByIndex(XCellRange row, int index) throws MduException {
 		XCell cell = getCellByIndex(row, index);
 
 		if (isContentType(cell, VALUE)) {
@@ -427,26 +440,28 @@ public class CalcDoc {
 	 * @param index
 	 * @return cell at zero-based index in the supplied row
 	 */
-	public static XCell getCellByIndex(XCellRange row, int index) throws OdsException {
+	public XCell getCellByIndex(XCellRange row, int index) throws MduException {
 		try {
 
 			return row.getCellByPosition(index, 0);
 		} catch (Exception e) {
 			// Exception obtaining cell in row.
-			throw new OdsException(e, "NWSYNC48");
+			throw asException(e, "NWSYNC48");
 		}
 	} // end getCellByIndex(XCellRange, int)
 
 	/**
+	 * @param msgProvider Message bundle provider
 	 * @return our properties
 	 */
-	public static Properties getNwSyncProps() throws OdsException {
+	public static Properties getNwSyncProps(MessageBundleProvider msgProvider)
+			throws MduException {
 		if (nwSyncProps == null) {
 			InputStream propsStream = CalcDoc.class.getClassLoader()
 				.getResourceAsStream(propertiesFileName);
 			if (propsStream == null)
 				// Unable to find %s on the class path.
-				throw new OdsException(null, "NWSYNC52", propertiesFileName);
+				throw asException(null, msgProvider, "NWSYNC52", propertiesFileName);
 
 			nwSyncProps = new Properties();
 			try {
@@ -455,7 +470,7 @@ public class CalcDoc {
 				nwSyncProps = null;
 
 				// Exception loading %s.
-				throw new OdsException(e, "NWSYNC53", propertiesFileName);
+				throw asException(e, msgProvider, "NWSYNC53", propertiesFileName);
 			} finally {
 				try {
 					propsStream.close();
@@ -465,5 +480,29 @@ public class CalcDoc {
 
 		return nwSyncProps;
 	} // end getNwSyncProps()
+
+	/**
+	 * @param cause Exception that caused this (null if none)
+	 * @param key The resource bundle key (or message)
+	 * @param params Optional parameters for the detail message
+	 * @return An exception with the supplied data
+	 */
+	MduException asException(Throwable cause, String key, Object... params) {
+
+		return new MduException(cause, this.msgProvider.retrieveMessage(key), params);
+	} // end asException(Throwable, String, Object...)
+
+	/**
+	 * @param cause Exception that caused this (null if none)
+	 * @param msgProvider Message bundle provider
+	 * @param key The resource bundle key (or message)
+	 * @param params Optional parameters for the detail message
+	 * @return An exception with the supplied data
+	 */
+	private static MduException asException(Throwable cause, MessageBundleProvider msgProvider,
+			String key, Object... params) {
+
+		return new MduException(cause, msgProvider.retrieveMessage(key), params);
+	} // end asException(Throwable, MessageBundleProvider, String, Object...)
 
 } // end class CalcDoc

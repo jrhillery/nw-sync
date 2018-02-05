@@ -10,6 +10,7 @@ import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
+import java.util.ResourceBundle;
 
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
@@ -29,6 +30,8 @@ public class MessageWindow extends JFrame implements ActionListener {
 	private JButton btnCommit;
 	private HTMLPane pnOutputLog;
 
+	static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages"; //$NON-NLS-1$
+	private static final ResourceBundle msgBundle = ResourceBundle.getBundle(baseMessageBundleName);
 	private static final long serialVersionUID = -3229995555109327972L;
 
 	/**
@@ -37,7 +40,8 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 * @param feature
 	 */
 	public MessageWindow(Main feature) {
-		super((feature == null ? "Message" : feature.getName()) + " Console");
+		super((feature == null ? msgBundle.getString("MessageWindow.window.title.default") //$NON-NLS-1$
+			: feature.getName()) + msgBundle.getString("MessageWindow.window.title.suffix")); //$NON-NLS-1$
 		this.feature = feature;
 
 		initComponents();
@@ -56,10 +60,10 @@ public class MessageWindow extends JFrame implements ActionListener {
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 
-		this.btnCommit = new JButton("Commit Changes");
+		this.btnCommit = new JButton(msgBundle.getString("MessageWindow.btnCommit.text")); //$NON-NLS-1$
 		this.btnCommit.setEnabled(false);
 		reducePreferredHeight(this.btnCommit);
-		this.btnCommit.setToolTipText("Commit changes to the spreadsheet");
+		this.btnCommit.setToolTipText(msgBundle.getString("MessageWindow.btnCommit.toolTipText")); //$NON-NLS-1$
 
 		this.pnOutputLog = new HTMLPane();
 		JScrollPane scrollPane = new JScrollPane(this.pnOutputLog);
@@ -102,7 +106,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 * Read in and set our icon image.
 	 */
 	private void readIconImage() {
-		setIconImage(HTMLPane.readResourceImage("update-icon24.png", this));
+		setIconImage(HTMLPane.readResourceImage("update-icon24.png", this)); //$NON-NLS-1$
 
 	} // end readIconImage()
 

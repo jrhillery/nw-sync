@@ -55,7 +55,6 @@ public class OdsAccessor implements MessageBundleProvider {
 	private Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
 	private ResourceBundle msgBundle = null;
 
-	private static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages";
 	private static final DateTimeFormatter dateFmt = DateTimeFormatter.ofLocalizedDate(MEDIUM);
 
 	/**
@@ -425,7 +424,8 @@ public class OdsAccessor implements MessageBundleProvider {
 	 */
 	private ResourceBundle getMsgBundle() {
 		if (this.msgBundle == null) {
-			this.msgBundle = MdUtil.getMsgBundle(baseMessageBundleName, this.locale);
+			this.msgBundle = MdUtil.getMsgBundle(MessageWindow.baseMessageBundleName,
+				this.locale);
 		}
 
 		return this.msgBundle;

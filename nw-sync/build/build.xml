@@ -48,7 +48,7 @@ http://jakarta.apache.org/ant/index.html
   	</javac>
 
     <jar destfile="${build}/nwsync.mxt">
-      <fileset dir="${src}/src/main/resources" includes="**"/>
+      <fileset dir="${src}/src/main/resources"/>
       <fileset dir="${build}" includes="com/**"/>
     </jar>
 

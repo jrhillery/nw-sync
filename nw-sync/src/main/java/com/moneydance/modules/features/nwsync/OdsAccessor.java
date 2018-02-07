@@ -143,16 +143,15 @@ public class OdsAccessor implements MessageBundleProvider {
 
 	/**
 	 * @param security
-	 * @param priceFmt
 	 * @return the price in the last snapshot of the supplied security
 	 */
-	private double getLatestPrice(CurrencyType security, NumberFormat priceFmt) {
+	private double getLatestPrice(CurrencyType security) {
 		CurrencySnapshot latestSnapshot = MdUtil.getLatestSnapshot(security);
 
 		// add this snapshot to our collection
 		getSecurityListForDate(latestSnapshot.getDateInt()).add(security.getName());
 
-		return MdUtil.validateCurrentUserRate(security, latestSnapshot, priceFmt);
+		return MdUtil.validateCurrentUserRate(security, latestSnapshot);
 	} // end getLatestPrice(CurrencyType, NumberFormat)
 
 	/**
@@ -236,8 +235,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * @param security the corresponding Moneydance security data
 	 */
 	private void setPriceIfDiff(CellHandler val, CurrencyType security) throws MduException {
-		NumberFormat priceFmt = val.getNumberFormat();
-		double price = getLatestPrice(security, priceFmt);
+		double price = getLatestPrice(security);
 		Number oldVal = val.getValue();
 
 		if (oldVal instanceof Double) {
@@ -245,6 +243,7 @@ public class OdsAccessor implements MessageBundleProvider {
 
 			if (price != oldPrice) {
 				// Change %s price from %s to %s (<span class="%s">%+.2f%%</span>).
+				NumberFormat priceFmt = val.getNumberFormat();
 				String spanCl = price < oldPrice ? CL_DECREASE : CL_INCREASE;
 				writeFormatted("NWSYNC10", security.getName(), val.getDisplayText(),
 					priceFmt.format(price), spanCl, (price / oldPrice - 1) * 100);

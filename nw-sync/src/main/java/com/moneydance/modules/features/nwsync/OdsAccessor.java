@@ -128,7 +128,7 @@ public class OdsAccessor implements MessageBundleProvider {
 
 	/**
 	 * @param keyVal
-	 * @return the Moneydance account corresponding to keyVal
+	 * @return The Moneydance account corresponding to keyVal
 	 */
 	private Account getAccount(String keyVal) {
 		final String[] actNames = keyVal.split(":");
@@ -143,20 +143,21 @@ public class OdsAccessor implements MessageBundleProvider {
 
 	/**
 	 * @param security
-	 * @return the price in the last snapshot of the supplied security
+	 * @return The price in the last snapshot of the supplied security
 	 */
 	private double getLatestPrice(CurrencyType security) {
 		CurrencySnapshot latestSnapshot = MdUtil.getLatestSnapshot(security);
 
 		// add this snapshot to our collection
-		getSecurityListForDate(latestSnapshot.getDateInt()).add(security.getName());
+		getSecurityListForDate(latestSnapshot.getDateInt())
+			.add(security.getName() + " (" + security.getTickerSymbol() + ')');
 
 		return MdUtil.validateCurrentUserRate(security, latestSnapshot);
 	} // end getLatestPrice(CurrencyType, NumberFormat)
 
 	/**
 	 * @param dateInt
-	 * @return the list of security names for the specified date integer
+	 * @return The list of security names for the specified date integer
 	 */
 	private List<String> getSecurityListForDate(int dateInt) {
 		LocalDate localDate = MdUtil.convDateIntToLocal(dateInt);
@@ -242,11 +243,12 @@ public class OdsAccessor implements MessageBundleProvider {
 			double oldPrice = MdUtil.roundPrice(oldVal.doubleValue());
 
 			if (price != oldPrice) {
-				// Change %s price from %s to %s (<span class="%s">%+.2f%%</span>).
+				// Change %s (%s) price from %s to %s (<span class="%s">%+.2f%%</span>).
 				NumberFormat priceFmt = val.getNumberFormat();
 				String spanCl = price < oldPrice ? CL_DECREASE : CL_INCREASE;
-				writeFormatted("NWSYNC10", security.getName(), val.getDisplayText(),
-					priceFmt.format(price), spanCl, (price / oldPrice - 1) * 100);
+				writeFormatted("NWSYNC10", security.getName(), security.getTickerSymbol(),
+					val.getDisplayText(), priceFmt.format(price), spanCl,
+					(price / oldPrice - 1) * 100);
 
 				val.setNewValue(price);
 				++this.numPricesSet;
@@ -287,7 +289,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 *
 	 * @param rowIterator
 	 * @param calcDoc
-	 * @return true when found
+	 * @return True when found
 	 */
 	private boolean findDateRow(XEnumeration rowIterator, CalcDoc calcDoc)
 			throws MduException {
@@ -313,7 +315,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * Capture index of the rightmost date in the date row. Also capture the
 	 * corresponding cell handler.
 	 *
-	 * @return true when found
+	 * @return True when found
 	 */
 	private boolean findLatestDate() throws MduException {
 		int cellIndex = 0;
@@ -371,7 +373,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end forgetChanges()
 
 	/**
-	 * @return true when we have uncommitted changes in memory
+	 * @return True when we have uncommitted changes in memory
 	 */
 	public boolean isModified() {
 
@@ -379,7 +381,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end isModified()
 
 	/**
-	 * @return the currently open spreadsheet document
+	 * @return The currently open spreadsheet document
 	 */
 	private CalcDoc getCalcDoc() throws MduException {
 		if (this.calcDoc == null) {
@@ -419,7 +421,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end releaseResources()
 
 	/**
-	 * @return our message bundle
+	 * @return Our message bundle
 	 */
 	private ResourceBundle getMsgBundle() {
 		if (this.msgBundle == null) {
@@ -432,7 +434,7 @@ public class OdsAccessor implements MessageBundleProvider {
 
 	/**
 	 * @param key The resource bundle key (or message)
-	 * @return message for this key
+	 * @return Message for this key
 	 */
 	public String retrieveMessage(String key) {
 		try {

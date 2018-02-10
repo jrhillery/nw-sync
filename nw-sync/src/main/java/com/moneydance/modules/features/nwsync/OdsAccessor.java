@@ -29,7 +29,6 @@ import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
 import com.leastlogic.moneydance.util.MdUtil;
 import com.leastlogic.moneydance.util.MduException;
-import com.leastlogic.moneydance.util.MessageBundleProvider;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.container.XEnumeration;
 import com.sun.star.sheet.XSpreadsheetDocument;

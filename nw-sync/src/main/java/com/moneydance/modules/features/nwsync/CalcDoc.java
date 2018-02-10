@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Properties;
 
 import com.leastlogic.moneydance.util.MduException;
-import com.leastlogic.moneydance.util.MessageBundleProvider;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.moneydance.modules.features.nwsync.CellHandler.FloatCellHandler;
 import com.sun.star.beans.XPropertySet;

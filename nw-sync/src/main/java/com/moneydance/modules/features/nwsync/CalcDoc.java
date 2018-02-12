@@ -9,7 +9,6 @@ import static com.sun.star.util.NumberFormat.DATE;
 import static com.sun.star.util.NumberFormat.UNDEFINED;
 import static java.time.temporal.ChronoUnit.DAYS;
 
-import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -20,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+import com.leastlogic.moneydance.util.MdUtil;
 import com.leastlogic.moneydance.util.MduException;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.moneydance.modules.features.nwsync.CellHandler.FloatCellHandler;
@@ -100,7 +100,7 @@ public class CalcDoc {
 
 	/**
 	 * @param msgProvider Message bundle provider
-	 * @return a list of currently open spreadsheet documents
+	 * @return A list of currently open spreadsheet documents
 	 */
 	public static List<XSpreadsheetDocument> getSpreadsheetDocs(
 			MessageBundleProvider msgProvider) throws MduException {
@@ -164,13 +164,12 @@ public class CalcDoc {
 
 	/**
 	 * @param msgProvider Message bundle provider
-	 * @return a LibreOffice desktop interface
+	 * @return A LibreOffice desktop interface
 	 */
 	private static XDesktop2 getOfficeDesktop(MessageBundleProvider msgProvider)
 			throws MduException {
 		if (!classPathUpdated) {
-			String officeInstallPath = getNwSyncProps(msgProvider)
-				.getProperty("office.install.path");
+			String officeInstallPath = getNwSyncProps().getProperty("office.install.path");
 			if (officeInstallPath == null)
 				// Unable to obtain office.install.path from %s on the class path.
 				throw asException(null, msgProvider, "NWSYNC54", propertiesFileName);
@@ -234,7 +233,7 @@ public class CalcDoc {
 	} // end closeOfficeConnection()
 
 	/**
-	 * @return a row iterator for the first sheet in the spreadsheet document
+	 * @return A row iterator for the first sheet in the spreadsheet document
 	 */
 	public XEnumeration getFirstSheetRowIterator() throws MduException {
 		XIndexAccess sheetIndex = getSheets();
@@ -276,7 +275,7 @@ public class CalcDoc {
 	} // end getFirstSheetRowIterator()
 
 	/**
-	 * @return the index access of the sheets in our spreadsheet document
+	 * @return The index access of the sheets in our spreadsheet document
 	 */
 	public XIndexAccess getSheets() {
 
@@ -294,7 +293,7 @@ public class CalcDoc {
 
 	/**
 	 * @param localDate date the cell should represent
-	 * @return date number value for the spreadsheet cell
+	 * @return Date number value for the spreadsheet cell
 	 */
 	public long getDateNumber(LocalDate localDate) {
 
@@ -332,7 +331,7 @@ public class CalcDoc {
 	} // end forgetChanges()
 
 	/**
-	 * @return true when the spreadsheet has uncommitted changes in memory
+	 * @return True when the spreadsheet has uncommitted changes in memory
 	 */
 	public boolean isModified() {
 
@@ -342,7 +341,7 @@ public class CalcDoc {
 	/**
 	 * @param zInterface
 	 * @param iterator
-	 * @return the next zInterface from the iterator
+	 * @return The next zInterface from the iterator
 	 */
 	public static <T> T next(Class<T> zInterface, XEnumeration iterator) throws MduException {
 		T rslt;
@@ -360,7 +359,7 @@ public class CalcDoc {
 	} // end next(Class<T>, XEnumeration)
 
 	/**
-	 * @return a string representation of this CalcDoc
+	 * @return A string representation of this CalcDoc
 	 */
 	public String toString() {
 
@@ -370,7 +369,7 @@ public class CalcDoc {
 	/**
 	 * @param cell
 	 * @param contentType
-	 * @return true when the supplied cell has the specified content type
+	 * @return True when the supplied cell has the specified content type
 	 */
 	public static boolean isContentType(XCell cell, CellContentType contentType) {
 
@@ -379,7 +378,7 @@ public class CalcDoc {
 
 	/**
 	 * @param cell
-	 * @return the cell's number format properties
+	 * @return The cell's number format properties
 	 */
 	public XPropertySet getNumberFormatProps(XCell cell) throws MduException {
 		XPropertySet cellNumberFormatProps = null;
@@ -400,7 +399,7 @@ public class CalcDoc {
 
 	/**
 	 * @param cell
-	 * @return the cell's number format type
+	 * @return The cell's number format type
 	 */
 	private short getNumberFormatType(XCell cell) throws MduException {
 		XPropertySet cellNumberFormatProps = getNumberFormatProps(cell);
@@ -437,7 +436,7 @@ public class CalcDoc {
 	/**
 	 * @param row office Row instance
 	 * @param index
-	 * @return cell at zero-based index in the supplied row
+	 * @return Cell at zero-based index in the supplied row
 	 */
 	public XCell getCellByIndex(XCellRange row, int index) throws MduException {
 		try {
@@ -450,31 +449,11 @@ public class CalcDoc {
 	} // end getCellByIndex(XCellRange, int)
 
 	/**
-	 * @param msgProvider Message bundle provider
-	 * @return our properties
+	 * @return Our properties
 	 */
-	public static Properties getNwSyncProps(MessageBundleProvider msgProvider)
-			throws MduException {
+	public static Properties getNwSyncProps() throws MduException {
 		if (nwSyncProps == null) {
-			InputStream propsStream = CalcDoc.class.getClassLoader()
-				.getResourceAsStream(propertiesFileName);
-			if (propsStream == null)
-				// Unable to find %s on the class path.
-				throw asException(null, msgProvider, "NWSYNC52", propertiesFileName);
-
-			nwSyncProps = new Properties();
-			try {
-				nwSyncProps.load(propsStream);
-			} catch (Exception e) {
-				nwSyncProps = null;
-
-				// Exception loading %s.
-				throw asException(e, msgProvider, "NWSYNC53", propertiesFileName);
-			} finally {
-				try {
-					propsStream.close();
-				} catch (Exception e) { /* ignore */ }
-			}
+			nwSyncProps = MdUtil.loadProps(propertiesFileName, CalcDoc.class);
 		}
 
 		return nwSyncProps;

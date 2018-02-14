@@ -106,7 +106,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 * Read in and set our icon image.
 	 */
 	private void readIconImage() {
-		setIconImage(HTMLPane.readResourceImage("update-icon24.png", this)); //$NON-NLS-1$
+		setIconImage(HTMLPane.readResourceImage("update-icon24.png", getClass())); //$NON-NLS-1$
 
 	} // end readIconImage()
 

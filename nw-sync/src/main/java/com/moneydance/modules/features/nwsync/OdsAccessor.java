@@ -8,8 +8,14 @@ import static com.leastlogic.swing.util.HTMLPane.CL_DECREASE;
 import static com.leastlogic.swing.util.HTMLPane.CL_INCREASE;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
+import static com.sun.star.uno.UnoRuntime.queryInterface;
 import static java.time.format.FormatStyle.MEDIUM;
 
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.TreeMap;
 
@@ -30,10 +37,18 @@ import com.infinitekind.moneydance.model.CurrencyType;
 import com.leastlogic.moneydance.util.MdUtil;
 import com.leastlogic.moneydance.util.MduException;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
+import com.sun.star.bridge.XBridge;
+import com.sun.star.bridge.XBridgeFactory;
+import com.sun.star.comp.helper.Bootstrap;
 import com.sun.star.container.XEnumeration;
+import com.sun.star.frame.XDesktop2;
+import com.sun.star.lang.XComponent;
+import com.sun.star.lang.XMultiComponentFactory;
+import com.sun.star.lang.XServiceInfo;
 import com.sun.star.sheet.XSpreadsheetDocument;
 import com.sun.star.table.XCell;
 import com.sun.star.table.XCellRange;
+import com.sun.star.uno.XComponentContext;
 
 /**
  * Provides read/write access to an ods (OpenOffice/LibreOffice) spreadsheet
@@ -52,8 +67,12 @@ public class OdsAccessor implements MessageBundleProvider {
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
 	private Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
+	private Properties nwSyncProps = null;
 	private ResourceBundle msgBundle = null;
 
+	private static boolean classPathUpdated = false;
+
+	private static final String propertiesFileName = "nw-sync.properties";
 	private static final DateTimeFormatter dateFmt = DateTimeFormatter.ofLocalizedDate(MEDIUM);
 
 	/**
@@ -90,7 +109,7 @@ public class OdsAccessor implements MessageBundleProvider {
 			return; // can't synchronize without a date row and latest date
 
 		while (rowItr.hasMoreElements()) {
-			XCellRange row = CalcDoc.next(XCellRange.class, rowItr); // get next row
+			XCellRange row = next(XCellRange.class, rowItr); // get next row
 			XCell key = calcDoc.getCellByIndex(row, 0); // get its first column
 
 			if (CalcDoc.isContentType(key, TEXT) || CalcDoc.isContentType(key, FORMULA)) {
@@ -293,7 +312,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	private boolean findDateRow(XEnumeration rowIterator, CalcDoc calcDoc)
 			throws MduException {
 		while (rowIterator.hasMoreElements()) {
-			XCellRange row = CalcDoc.next(XCellRange.class, rowIterator); // get next row
+			XCellRange row = next(XCellRange.class, rowIterator); // get next row
 			XCell c = calcDoc.getCellByIndex(row, 0); // get its first column
 
 			if (CalcDoc.isContentType(c, TEXT)
@@ -384,7 +403,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 */
 	private CalcDoc getCalcDoc() throws MduException {
 		if (this.calcDoc == null) {
-			List<XSpreadsheetDocument> docList = CalcDoc.getSpreadsheetDocs(this);
+			List<XSpreadsheetDocument> docList = getSpreadsheetDocs();
 
 			switch (docList.size()) {
 			case 0:
@@ -408,16 +427,174 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end getCalcDoc()
 
 	/**
+	 * @return A list of currently open spreadsheet documents
+	 */
+	private List<XSpreadsheetDocument> getSpreadsheetDocs() throws MduException {
+		List<XSpreadsheetDocument> docList = new ArrayList<>();
+		XDesktop2 libreOfficeDesktop = getOfficeDesktop();
+		XEnumeration compItr = libreOfficeDesktop.getComponents().createEnumeration();
+
+		if (!compItr.hasMoreElements()) {
+			// no components so we probably started the desktop => terminate it
+			libreOfficeDesktop.terminate();
+		} else {
+			do {
+				XServiceInfo comp = next(XServiceInfo.class, compItr);
+
+				if (comp.supportsService("com.sun.star.sheet.SpreadsheetDocument")) {
+					docList.add(queryInterface(XSpreadsheetDocument.class, comp));
+				}
+			} while (compItr.hasMoreElements());
+		}
+
+		return docList;
+	} // end getSpreadsheetDocs()
+
+	/**
+	 * Modify the system class loader's class path to add the required
+	 * LibreOffice jar files. Need to use reflection since the
+	 * URLClassLoader.addURL(URL) method is protected.
+	 *
+	 * @param officePath Location of the installed LibreOffice jar files
+	 */
+	private void addOfficeApiToClassPath(Path officePath) throws MduException {
+		URLClassLoader sysClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+		Method addURL;
+		try {
+			addURL = URLClassLoader.class.getDeclaredMethod("addURL", new Class[] { URL.class });
+		} catch (Exception e) {
+			// Exception obtaining class loader addURL method.
+			throw asException(e, "NWSYNC49");
+		}
+		addURL.setAccessible(true);
+		for (String apiJar : new String[] {
+				"juh.jar", "jurt.jar", "ridl.jar", "unoil.jar", "unoloader.jar" }) {
+			URL apiUrl;
+			try {
+				apiUrl = officePath.resolve(apiJar).toUri().toURL();
+			} catch (Exception e) {
+				// Exception obtaining URL to jar %s in path %s.
+				throw asException(e, "NWSYNC50", apiJar, officePath);
+			}
+			try {
+				addURL.invoke(sysClassLoader, apiUrl);
+			} catch (Exception e) {
+				// Exception adding %s to class path.
+				throw asException(e, "NWSYNC51", apiUrl);
+			}
+		} // end for
+
+	} // end addOfficeApiToClassPath(Path)
+
+	/**
+	 * @return A LibreOffice desktop interface
+	 */
+	private XDesktop2 getOfficeDesktop() throws MduException {
+		if (!classPathUpdated) {
+			String officeInstallPath = getNwSyncProps().getProperty("office.install.path");
+			if (officeInstallPath == null)
+				// Unable to obtain office.install.path from %s on the class path.
+				throw asException(null, "NWSYNC54", propertiesFileName);
+
+			addOfficeApiToClassPath(Paths.get(officeInstallPath, "program", "classes"));
+			classPathUpdated = true;
+		}
+		XComponentContext remoteContext;
+		try {
+			remoteContext = Bootstrap.bootstrap();
+		} catch (Throwable e) {
+			// Exception obtaining office context.
+			throw asException(e, "NWSYNC33");
+		}
+		if (remoteContext == null)
+			// Unable to obtain office context.
+			throw asException(null, "NWSYNC34");
+
+		XMultiComponentFactory remoteServiceMgr = remoteContext.getServiceManager();
+		if (remoteServiceMgr == null)
+			// Unable to obtain office service manager.
+			throw asException(null, "NWSYNC35");
+
+		XDesktop2 libreOfficeDesktop;
+		try {
+			libreOfficeDesktop = queryInterface(XDesktop2.class, remoteServiceMgr
+				.createInstanceWithContext("com.sun.star.frame.Desktop", remoteContext));
+		} catch (Exception e) {
+			// Exception obtaining office desktop.
+			throw asException(e, "NWSYNC36");
+		}
+		if (libreOfficeDesktop == null)
+			// Unable to obtain office desktop.
+			throw asException(null, "NWSYNC37");
+
+		return libreOfficeDesktop;
+	} // end getOfficeDesktop()
+
+	/**
+	 * @param zInterface
+	 * @param iterator
+	 * @return The next zInterface from the iterator
+	 */
+	private static <T> T next(Class<T> zInterface, XEnumeration iterator) throws MduException {
+		T rslt;
+		try {
+			rslt = queryInterface(zInterface, iterator.nextElement());
+		} catch (Exception e) {
+			throw new MduException(e, "Exception iterating to next %s.",
+				zInterface.getSimpleName());
+		}
+		if (rslt == null)
+			throw new MduException(null, "Unable to obtain next %s.",
+				zInterface.getSimpleName());
+
+		return rslt;
+	} // end next(Class<T>, XEnumeration)
+
+	/**
 	 * Release any resources we acquired. This includes closing the connection to
 	 * the office process.
 	 *
 	 * @return null
 	 */
 	public OdsAccessor releaseResources() {
-		CalcDoc.closeOfficeConnection();
+		closeOfficeConnection();
 
 		return null;
 	} // end releaseResources()
+
+	/**
+	 * Close our connection to the office process.
+	 */
+	public static void closeOfficeConnection() {
+		try {
+			// get the bridge factory from the local service manager
+			XBridgeFactory bridgeFactory = queryInterface(XBridgeFactory.class,
+				Bootstrap.createSimpleServiceManager()
+					.createInstance("com.sun.star.bridge.BridgeFactory"));
+
+			if (bridgeFactory != null) {
+				for (XBridge bridge : bridgeFactory.getExistingBridges()) {
+					// dispose of this bridge after closing its connection
+					queryInterface(XComponent.class, bridge).dispose();
+				}
+			}
+		} catch (Throwable e) {
+			System.err.println("Exception disposing office process connection bridge:");
+			e.printStackTrace(System.err);
+		}
+
+	} // end closeOfficeConnection()
+
+	/**
+	 * @return Our properties
+	 */
+	public Properties getNwSyncProps() throws MduException {
+		if (this.nwSyncProps == null) {
+			this.nwSyncProps = MdUtil.loadProps(propertiesFileName, getClass());
+		}
+
+		return this.nwSyncProps;
+	} // end getNwSyncProps()
 
 	/**
 	 * @return Our message bundle
@@ -453,5 +630,16 @@ public class OdsAccessor implements MessageBundleProvider {
 		this.messageWindow.addText(String.format(this.locale, retrieveMessage(key), params));
 
 	} // end writeFormatted(String, Object...)
+
+	/**
+	 * @param cause Exception that caused this (null if none)
+	 * @param key The resource bundle key (or message)
+	 * @param params Optional parameters for the detail message
+	 * @return An exception with the supplied data
+	 */
+	private MduException asException(Throwable cause, String key, Object... params) {
+
+		return new MduException(cause, retrieveMessage(key), params);
+	} // end asException(Throwable, String, Object...)
 
 } // end class OdsAccessor

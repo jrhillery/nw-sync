@@ -31,10 +31,16 @@ public abstract class CellHandler {
 
 		} // end (XCell, CalcDoc) constructor
 
+		/**
+		 * @return The numeric value of this cell as a Double
+		 */
 		public Double getValue() {
 			return this.cell.getValue();
 		} // end getValue()
 
+		/**
+		 * @param value The double value to save in this cell
+		 */
 		public void setValue(Number value) {
 			if (value != null) {
 				this.cell.setValue(value.doubleValue());
@@ -49,6 +55,35 @@ public abstract class CellHandler {
 			return this.numberFormat;
 		} // end getNumberFormat()
 
+		/**
+		 * @return A decimal format for this cell
+		 */
+		private NumberFormat createDecimalFormat() throws MduException {
+			XPropertySet numberFormatProps = this.calcDoc.getNumberFormatProps(this.cell);
+
+			if (numberFormatProps != null) {
+				String fmtString;
+				try {
+					fmtString = (String) numberFormatProps.getPropertyValue("FormatString");
+				} catch (Exception e) {
+					throw new MduException(e,
+						"Exception obtaining number format string in cell %s.", this);
+				}
+				if (fmtString != null && !fmtString.equals("General")) {
+					// isolate the positive subpattern
+					String[] patternParts = fmtString.split(";");
+					// transform any currency symbols
+					String pattern = patternParts[0].replace("[$$-409]", "$");
+					DecimalFormat df = new DecimalFormat();
+					df.applyLocalizedPattern(pattern);
+
+					return df;
+				}
+			}
+
+			return NumberFormat.getNumberInstance();
+		} // end createDecimalFormat()
+
 	} // end class FloatCellHandler
 
 	/**
@@ -61,14 +96,14 @@ public abstract class CellHandler {
 		} // end (XCell, CalcDoc) constructor
 
 		/**
-		 * @return the numeric date value of this cell in decimal form YYYYMMDD
+		 * @return The numeric date value of this cell in decimal form YYYYMMDD
 		 */
 		public Integer getValue() {
 			return MdUtil.convLocalToDateInt(getDateValue());
 		} // end getValue()
 
 		/**
-		 * @return the local date value of this cell
+		 * @return The local date value of this cell
 		 */
 		public LocalDate getDateValue() {
 
@@ -76,7 +111,7 @@ public abstract class CellHandler {
 		} // end getDateValue()
 
 		/**
-		 * @param value the numeric date value (in decimal form YYYYMMDD) to save in this cell
+		 * @param value The numeric date value (in decimal form YYYYMMDD) to save in this cell
 		 */
 		public void setValue(Number value) {
 			if (value != null) {
@@ -89,7 +124,7 @@ public abstract class CellHandler {
 
 		public NumberFormat getNumberFormat() {
 			if (this.numberFormat == null) {
-				this.numberFormat = (DecimalFormat) NumberFormat.getIntegerInstance();
+				this.numberFormat = NumberFormat.getIntegerInstance();
 			}
 			return this.numberFormat;
 		} // end getNumberFormat()
@@ -98,14 +133,14 @@ public abstract class CellHandler {
 
 	protected XCell cell;
 	protected CalcDoc calcDoc;
-	protected DecimalFormat numberFormat = null;
+	protected NumberFormat numberFormat = null;
 	private Number newValue = null;
 
 	/**
 	 * Sole constructor.
 	 *
-	 * @param cell office Cell instance to be handled
-	 * @param calcDoc local spreadsheet document containing this cell
+	 * @param cell Office Cell instance to be handled
+	 * @param calcDoc Local spreadsheet document containing this cell
 	 */
 	public CellHandler(XCell cell, CalcDoc calcDoc) {
 		this.cell = cell;
@@ -114,30 +149,22 @@ public abstract class CellHandler {
 	} // end (XCell, CalcDoc) constructor
 
 	/**
-	 * @return the numeric value of this cell
+	 * @return The numeric value of this cell
 	 */
 	public abstract Number getValue();
 
 	/**
-	 * @param value the value to save in this cell
+	 * @param value The value to save in this cell
 	 */
 	public abstract void setValue(Number value);
 
 	/**
-	 * @return a formatter for values in this cell
+	 * @return A formatter for values in this cell
 	 */
 	public abstract NumberFormat getNumberFormat() throws MduException;
 
 	/**
-	 * @return the formula string of this cell
-	 */
-	public String getFormula() {
-
-		return this.cell.getFormula();
-	} // end getFormula()
-
-	/**
-	 * @return the text displayed in this cell
+	 * @return The text displayed in this cell
 	 */
 	public String getDisplayText() {
 
@@ -145,7 +172,7 @@ public abstract class CellHandler {
 	} // end getDisplayText()
 
 	/**
-	 * @param newValue new value to save for later application
+	 * @param newValue New value to save for later application
 	 */
 	public void setNewValue(Number newValue) {
 		this.newValue = newValue;
@@ -162,7 +189,7 @@ public abstract class CellHandler {
 	} // end applyUpdate()
 
 	/**
-	 * @return a string representation of this CellHandler
+	 * @return A string representation of this CellHandler
 	 */
 	public String toString() {
 		StringBuilder sb = new StringBuilder(getDisplayText());
@@ -179,37 +206,8 @@ public abstract class CellHandler {
 	} // end toString()
 
 	/**
-	 * @return a decimal format for this cell
-	 */
-	protected DecimalFormat createDecimalFormat() throws MduException {
-		XPropertySet numberFormatProps = this.calcDoc.getNumberFormatProps(this.cell);
-
-		if (numberFormatProps != null) {
-			String fmtString;
-			try {
-				fmtString = (String) numberFormatProps.getPropertyValue("FormatString");
-			} catch (Exception e) {
-				// Exception obtaining number format string in cell %s.
-				throw this.calcDoc.asException(e, "NWSYNC55", this);
-			}
-			if (fmtString != null && !fmtString.equals("General")) {
-				// isolate the positive subpattern
-				String[] patternParts = fmtString.split(";");
-				// transform any currency symbols
-				String pattern = patternParts[0].replace("[$$-409]", "$");
-				DecimalFormat df = new DecimalFormat();
-				df.applyLocalizedPattern(pattern);
-
-				return df;
-			}
-		}
-
-		return (DecimalFormat) NumberFormat.getNumberInstance();
-	} // end createDecimalFormat()
-
-	/**
 	 * @param cell
-	 * @return the text displayed in cell
+	 * @return The text displayed in cell
 	 */
 	public static String asDisplayText(XCell cell) {
 		XText cellText = queryInterface(XText.class, cell);

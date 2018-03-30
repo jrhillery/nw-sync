@@ -64,6 +64,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	private XCellRange dateRow = null;
 	private int latestColumn = 0;
 	private DateCellHandler latestDateCell = null;
+	private int[] earlierDates = null;
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
 	private Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
@@ -127,7 +128,8 @@ public class OdsAccessor implements MessageBundleProvider {
 
 						if (account != null) {
 							// found this row's account in Moneydance
-							setBalanceIfDiff(val, account, keyVal);
+							setTodaysBalIfDiff(val, account, keyVal);
+							setEarlierBalsIfDiff(row, account, keyVal);
 						} else {
 							System.err.println("Ignoring row " + keyVal);
 						}
@@ -221,7 +223,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end analyzeSecurityDates()
 
 	/**
-	 * @param localDate the new date to use
+	 * @param localDate The new date to use
 	 */
 	private void setDateIfDiff(LocalDate localDate) throws MduException {
 		LocalDate oldLocalDate = this.latestDateCell.getDateValue();
@@ -250,8 +252,8 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * Set the spreadsheet security price if it differs from Moneydance for the
 	 * latest date found in the spreadsheet.
 	 *
-	 * @param val the cell to potentially change
-	 * @param security the corresponding Moneydance security data
+	 * @param val The cell to potentially change
+	 * @param security The corresponding Moneydance security data
 	 */
 	private void setPriceIfDiff(CellHandler val, CurrencyType security) throws MduException {
 		double price = getLatestPrice(security);
@@ -278,29 +280,72 @@ public class OdsAccessor implements MessageBundleProvider {
 	/**
 	 * Set the spreadsheet account balance if it differs from Moneydance.
 	 *
-	 * @param val the cell to potentially change
-	 * @param account the corresponding Moneydance account
-	 * @param keyVal the spreadsheet name of this account
+	 * @param val The cell to potentially change
+	 * @param account The corresponding Moneydance account
+	 * @param keyVal The spreadsheet name of this account
 	 */
-	private void setBalanceIfDiff(CellHandler val, Account account, String keyVal)
+	private void setTodaysBalIfDiff(CellHandler val, Account account, String keyVal)
 			throws MduException {
 		double balance = MdUtil.getCurrentBalance(account);
+		setBalanceIfDiff(val, account, keyVal, balance, "today");
 
+	} // end setTodaysBalIfDiff(CellHandler, Account, String)
+
+	/**
+	 * @param val The cell to potentially change
+	 * @param account The corresponding Moneydance account
+	 * @param keyVal The spreadsheet name of this account
+	 * @param balance The new balance
+	 * @param dayStr The applicable day
+	 */
+	private void setBalanceIfDiff(CellHandler val, Account account, String keyVal,
+			double balance, String dayStr) throws MduException {
 		if (account.getAccountType() == CREDIT_CARD) {
 			balance = -balance;
 		}
 		Number oldBalance = val.getValue();
 
 		if ((oldBalance instanceof Double) && balance != oldBalance.doubleValue()) {
-			// Change %s balance from %s to %s.
-			writeFormatted("NWSYNC11", keyVal, val.getDisplayText(),
+			// Change %s balance for %s from %s to %s.
+			writeFormatted("NWSYNC11", keyVal, dayStr, val.getDisplayText(),
 				val.getNumberFormat().format(balance));
 
 			val.setNewValue(balance);
 			++this.numBalancesSet;
 		}
 
-	} // end setBalanceIfDiff(CellHandler, Account, String)
+	} // end setBalanceIfDiff(CellHandler, Account, String, double, String)
+
+	/**
+	 * Set the spreadsheet account balances if any differ from Moneydance.
+	 *
+	 * @param row The row with cells to potentially change
+	 * @param account The corresponding Moneydance account
+	 * @param keyVal The spreadsheet name of this account
+	 */
+	private void setEarlierBalsIfDiff(XCellRange row, Account account, String keyVal)
+			throws MduException {
+		double[] balances = MdUtil.getBalancesAsOfDates(this.root.getBook(), account,
+			this.earlierDates);
+		String lastIgnore = null;
+
+		for (int i = 0; i < balances.length; ++i) {
+			String dayStr = MdUtil.convDateIntToLocal(this.earlierDates[i]).format(dateFmt);
+			CellHandler val = this.calcDoc.getCellHandlerByIndex(row, i + 1);
+
+			if (val == null) {
+				lastIgnore = dayStr;
+			} else {
+				setBalanceIfDiff(val, account, keyVal, balances[i], dayStr);
+			}
+		} // end for
+
+		if (lastIgnore != null) {
+			System.err.format(this.locale, "Ignoring %s balance through %s.%n", keyVal,
+				lastIgnore);
+		}
+
+	} // end setEarlierBalsIfDiff(XCellRange, Account, String)
 
 	/**
 	 * Capture row with 'Date' in first column.
@@ -338,10 +383,15 @@ public class OdsAccessor implements MessageBundleProvider {
 	private boolean findLatestDate() throws MduException {
 		int cellIndex = 0;
 		CellHandler c = null;
+		ArrayList<LocalDate> dates = new ArrayList<>();
 
 		do {
 			// capture the rightmost date cell handler so far
 			this.latestDateCell = (DateCellHandler) c;
+
+			if (this.latestDateCell != null) {
+				dates.add(this.latestDateCell.getDateValue());
+			}
 			c = getCalcDoc().getCellHandlerByIndex(this.dateRow, ++cellIndex);
 		} while (c instanceof DateCellHandler);
 
@@ -354,6 +404,13 @@ public class OdsAccessor implements MessageBundleProvider {
 
 		// capture index of the rightmost date in the date row
 		this.latestColumn = cellIndex - 1;
+
+		// save each earlier date
+		this.earlierDates = new int[dates.size() - 1];
+
+		for (int i = 0; i < this.earlierDates.length; ++i) {
+			this.earlierDates[i] = MdUtil.convLocalToDateInt(dates.get(i));
+		}
 
 		// Found date [%s] in %s.
 		writeFormatted("NWSYNC13", this.latestDateCell.getDateValue().format(dateFmt),

@@ -3,7 +3,6 @@
  */
 package com.moneydance.modules.features.nwsync;
 
-import static com.infinitekind.moneydance.model.Account.AccountType.CREDIT_CARD;
 import static com.leastlogic.swing.util.HTMLPane.CL_DECREASE;
 import static com.leastlogic.swing.util.HTMLPane.CL_INCREASE;
 import static com.sun.star.table.CellContentType.FORMULA;
@@ -287,22 +286,18 @@ public class OdsAccessor implements MessageBundleProvider {
 	private void setTodaysBalIfDiff(CellHandler val, Account account, String keyVal)
 			throws MduException {
 		double balance = MdUtil.getCurrentBalance(account);
-		setBalanceIfDiff(val, account, keyVal, balance, "today");
+		setBalanceIfDiff(val, balance, keyVal, "today");
 
 	} // end setTodaysBalIfDiff(CellHandler, Account, String)
 
 	/**
 	 * @param val The cell to potentially change
-	 * @param account The corresponding Moneydance account
-	 * @param keyVal The spreadsheet name of this account
 	 * @param balance The new balance
+	 * @param keyVal The spreadsheet name of this account
 	 * @param dayStr The applicable day
 	 */
-	private void setBalanceIfDiff(CellHandler val, Account account, String keyVal,
-			double balance, String dayStr) throws MduException {
-		if (account.getAccountType() == CREDIT_CARD) {
-			balance = -balance;
-		}
+	private void setBalanceIfDiff(CellHandler val, double balance, String keyVal,
+			String dayStr) throws MduException {
 		Number oldBalance = val.getValue();
 
 		if ((oldBalance instanceof Double) && balance != oldBalance.doubleValue()) {
@@ -314,7 +309,7 @@ public class OdsAccessor implements MessageBundleProvider {
 			++this.numBalancesSet;
 		}
 
-	} // end setBalanceIfDiff(CellHandler, Account, String, double, String)
+	} // end setBalanceIfDiff(CellHandler, double, String, String)
 
 	/**
 	 * Set the spreadsheet account balances if any differ from Moneydance.
@@ -336,7 +331,7 @@ public class OdsAccessor implements MessageBundleProvider {
 			if (val == null) {
 				lastIgnore = dayStr;
 			} else {
-				setBalanceIfDiff(val, account, keyVal, balances[i], dayStr);
+				setBalanceIfDiff(val, balances[i], keyVal, dayStr);
 			}
 		} // end for
 

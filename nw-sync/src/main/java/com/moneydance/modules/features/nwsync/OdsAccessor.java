@@ -175,16 +175,16 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end getLatestPrice(CurrencyType, NumberFormat)
 
 	/**
-	 * @param dateInt
+	 * @param dateInt The date these securities were updated
 	 * @return The list of security names for the specified date integer
 	 */
 	private List<String> getSecurityListForDate(int dateInt) {
-		LocalDate localDate = MdUtil.convDateIntToLocal(dateInt);
-		List<String> daysSecurities = this.securitySnapshots.get(localDate);
+		LocalDate marketDate = MdUtil.convDateIntToLocal(dateInt);
+		List<String> daysSecurities = this.securitySnapshots.get(marketDate);
 
 		if (daysSecurities == null) {
 			daysSecurities = new ArrayList<>();
-			this.securitySnapshots.put(localDate, daysSecurities);
+			this.securitySnapshots.put(marketDate, daysSecurities);
 		}
 
 		return daysSecurities;
@@ -199,22 +199,19 @@ public class OdsAccessor implements MessageBundleProvider {
 
 		if (snapshotsIterator.hasNext()) {
 			Entry<LocalDate, List<String>> snapShotsEntry = snapshotsIterator.next();
-			LocalDate localDate = snapShotsEntry.getKey();
+			LocalDate marketDate = snapShotsEntry.getKey();
 
 			if (!snapshotsIterator.hasNext()) {
 				// must be a single date => use it
-				setDateIfDiff(localDate);
+				setDateIfDiff(marketDate);
 			} else {
 				// have multiple latest dates for security prices
-				writeFormatted("NWSYNC17", localDate.format(dateFmt), snapShotsEntry.getValue());
+				reportOneOfMultipleDates(marketDate, snapShotsEntry.getValue());
 
 				while (snapshotsIterator.hasNext()) {
 					snapShotsEntry = snapshotsIterator.next();
-					localDate = snapShotsEntry.getKey();
-
-					// The following security prices were last updated on %s: %s
-					writeFormatted("NWSYNC17", localDate.format(dateFmt),
-						snapShotsEntry.getValue());
+					marketDate = snapShotsEntry.getKey();
+					reportOneOfMultipleDates(marketDate, snapShotsEntry.getValue());
 				} // end while
 			}
 		}
@@ -222,30 +219,55 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end analyzeSecurityDates()
 
 	/**
-	 * @param localDate The new date to use
+	 * @param marketDate The date these securities were updated
+	 * @param daysSecurities The list of security names updated on market date
 	 */
-	private void setDateIfDiff(LocalDate localDate) throws MduException {
-		LocalDate oldLocalDate = this.latestDateCell.getDateValue();
+	private void reportOneOfMultipleDates(LocalDate marketDate, List<String> daysSecurities)
+			throws MduException {
+		// The following security prices were last updated on %s: %s
+		writeFormatted("NWSYNC17", marketDate.format(dateFmt), daysSecurities);
+		LocalDate oldDate = this.latestDateCell.getDateValue();
 
-		if (!localDate.equals(oldLocalDate)) {
+		if (marketDate.isAfter(oldDate)
+				&& (marketDate.getMonthValue() != oldDate.getMonthValue()
+						|| marketDate.getYear() != oldDate.getYear())) {
+			handleNewMonth(marketDate, oldDate);
+		}
 
-			if (localDate.getMonthValue() == oldLocalDate.getMonthValue()
-					&& localDate.getYear() == oldLocalDate.getYear()) {
+	} // end reportOneOfMultipleDates(LocalDate, List<String>)
+
+	/**
+	 * @param marketDate The new date to use
+	 */
+	private void setDateIfDiff(LocalDate marketDate) throws MduException {
+		LocalDate oldDate = this.latestDateCell.getDateValue();
+
+		if (!marketDate.equals(oldDate)) {
+
+			if (marketDate.getMonthValue() == oldDate.getMonthValue()
+					&& marketDate.getYear() == oldDate.getYear()) {
 				// Change rightmost date from %s to %s.
-				writeFormatted("NWSYNC15", oldLocalDate.format(dateFmt),
-					localDate.format(dateFmt));
+				writeFormatted("NWSYNC15", oldDate.format(dateFmt), marketDate.format(dateFmt));
 
-				this.latestDateCell.setNewValue(MdUtil.convLocalToDateInt(localDate));
-			} else if (localDate.isAfter(oldLocalDate)) {
-				// A new month column is needed to change date from %s to %s.
-				writeFormatted("NWSYNC16", oldLocalDate.format(dateFmt),
-					localDate.format(dateFmt));
-
-				getCalcDoc().forgetChanges();
+				this.latestDateCell.setNewValue(MdUtil.convLocalToDateInt(marketDate));
+			} else if (marketDate.isAfter(oldDate)) {
+				handleNewMonth(marketDate, oldDate);
 			}
 		}
 
 	} // end setDateIfDiff(LocalDate)
+
+	/**
+	 * @param marketDate The new date to use
+	 * @param oldDate The date from the spreadsheet
+	 */
+	private void handleNewMonth(LocalDate marketDate, LocalDate oldDate) throws MduException {
+		// A new month column is needed to change date from %s to %s.
+		writeFormatted("NWSYNC16", oldDate.format(dateFmt), marketDate.format(dateFmt));
+
+		getCalcDoc().forgetChanges();
+
+	} // end handleNewMonth(LocalDate, LocalDate)
 
 	/**
 	 * Set the spreadsheet security price if it differs from Moneydance for the

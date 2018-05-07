@@ -8,9 +8,11 @@ import static com.leastlogic.swing.util.HTMLPane.CL_INCREASE;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
 import static com.sun.star.uno.UnoRuntime.queryInterface;
+import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.format.FormatStyle.MEDIUM;
 
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
@@ -322,13 +324,19 @@ public class OdsAccessor implements MessageBundleProvider {
 			String dayStr) throws MduException {
 		Number oldBalance = val.getValue();
 
-		if ((oldBalance instanceof Double) && balance != oldBalance.doubleValue()) {
-			// Change %s balance for %s from %s to %s.
-			writeFormatted("NWSYNC11", keyVal, dayStr, val.getDisplayText(),
-				val.getNumberFormat().format(balance));
+		if (oldBalance instanceof Double) {
+			// compare balance rounded to the tenth place past the decimal point
+			double oldBal = BigDecimal.valueOf(oldBalance.doubleValue())
+				.setScale(10, HALF_EVEN).doubleValue();
 
-			val.setNewValue(balance);
-			++this.numBalancesSet;
+			if (balance != oldBal) {
+				// Change %s balance for %s from %s to %s.
+				writeFormatted("NWSYNC11", keyVal, dayStr, val.getDisplayText(),
+					val.getNumberFormat().format(balance));
+
+				val.setNewValue(balance);
+				++this.numBalancesSet;
+			}
 		}
 
 	} // end setBalanceIfDiff(CellHandler, double, String, String)

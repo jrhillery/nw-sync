@@ -169,9 +169,11 @@ public class OdsAccessor implements MessageBundleProvider {
 	private double getLatestPrice(CurrencyType security) {
 		CurrencySnapshot latestSnapshot = MdUtil.getLatestSnapshot(security);
 
-		// add this snapshot to our collection
-		getSecurityListForDate(latestSnapshot.getDateInt())
-			.add(security.getName() + " (" + security.getTickerSymbol() + ')');
+		if (latestSnapshot != null) {
+			// add this snapshot to our collection
+			getSecurityListForDate(latestSnapshot.getDateInt())
+				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
+		}
 
 		return MdUtil.validateCurrentUserRate(security, latestSnapshot);
 	} // end getLatestPrice(CurrencyType, NumberFormat)

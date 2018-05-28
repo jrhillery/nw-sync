@@ -6,6 +6,7 @@ package com.moneydance.modules.features.nwsync;
 import static com.sun.star.table.CellContentType.VALUE;
 import static com.sun.star.uno.UnoRuntime.queryInterface;
 import static com.sun.star.util.NumberFormat.DATE;
+import static com.sun.star.util.NumberFormat.PERCENT;
 import static com.sun.star.util.NumberFormat.UNDEFINED;
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -251,7 +252,9 @@ public class CalcDoc {
 		if (isContentType(cell, VALUE)) {
 			short numberFormatType = getNumberFormatType(cell);
 
-			return (numberFormatType & DATE) != 0
+			return (numberFormatType & PERCENT) != 0
+				? null
+				: (numberFormatType & DATE) != 0
 				? new DateCellHandler(cell, this)
 				: new FloatCellHandler(cell, this);
 		}

@@ -123,7 +123,8 @@ public class OdsAccessor implements MessageBundleProvider {
 
 					if (security != null) {
 						// found this row's ticker symbol in Moneydance securities
-						setPriceIfDiff(val, security);
+						setTodaysPriceIfDiff(val, security);
+						setEarlierPricesIfDiff(row, security);
 					} else {
 						Account account = getAccount(keyVal);
 
@@ -177,6 +178,22 @@ public class OdsAccessor implements MessageBundleProvider {
 
 		return MdUtil.validateCurrentUserRate(security, latestSnapshot);
 	} // end getLatestPrice(CurrencyType, NumberFormat)
+
+	/**
+	 * @param security
+	 * @param asOfDates The dates to obtain the price for
+	 * @return Security prices as of the end of each date in asOfDates
+	 */
+	private double[] getPricesAsOfDates(CurrencyType security, int[] asOfDates) {
+		double[] prices = new double[asOfDates.length];
+
+		for (int i = prices.length - 1; i >= 0; --i) {
+			CurrencySnapshot snapshot = MdUtil.getSnapshotForDate(security, asOfDates[i]);
+			prices[i] = snapshot == null ? 1 : MdUtil.convRateToPrice(snapshot.getUserRate());
+		} // end for
+
+		return prices;
+	} // end getPricesAsOfDates(CurrencyType, int[])
 
 	/**
 	 * @param dateInt The date these securities were updated
@@ -275,23 +292,36 @@ public class OdsAccessor implements MessageBundleProvider {
 
 	/**
 	 * Set the spreadsheet security price if it differs from Moneydance for the
-	 * latest date found in the spreadsheet.
+	 * latest date column found in the spreadsheet.
 	 *
 	 * @param val The cell to potentially change
 	 * @param security The corresponding Moneydance security data
 	 */
-	private void setPriceIfDiff(CellHandler val, CurrencyType security) throws MduException {
+	private void setTodaysPriceIfDiff(CellHandler val, CurrencyType security)
+			throws MduException {
 		double price = getLatestPrice(security);
+		setPriceIfDiff(val, price, security, "today");
+
+	} // end setTodaysPriceIfDiff(CellHandler, CurrencyType)
+
+	/**
+	 * @param val The cell to potentially change
+	 * @param price The new price
+	 * @param security The corresponding Moneydance security data
+	 * @param dayStr The applicable day
+	 */
+	private void setPriceIfDiff(CellHandler val, double price, CurrencyType security,
+			String dayStr) throws MduException {
 		Number oldVal = val.getValue();
 
 		if (oldVal instanceof Double) {
 			double oldPrice = MdUtil.roundPrice(oldVal.doubleValue());
 
 			if (price != oldPrice) {
-				// Change %s (%s) price from %s to %s (<span class="%s">%+.2f%%</span>).
+				// Change %s (%s) price for %s from %s to %s (<span class\="%s">%+.2f%%</span>).
 				NumberFormat priceFmt = val.getNumberFormat();
 				String spanCl = price < oldPrice ? CL_DECREASE : CL_INCREASE;
-				writeFormatted("NWSYNC10", security.getName(), security.getTickerSymbol(),
+				writeFormatted("NWSYNC10", security.getName(), security.getTickerSymbol(), dayStr,
 					val.getDisplayText(), priceFmt.format(price), spanCl,
 					(price / oldPrice - 1) * 100);
 
@@ -300,10 +330,32 @@ public class OdsAccessor implements MessageBundleProvider {
 			}
 		}
 
-	} // end setPriceIfDiff(CellHandler, CurrencyType)
+	} // end setPriceIfDiff(CellHandler, double, CurrencyType, String)
 
 	/**
-	 * Set the spreadsheet account balance if it differs from Moneydance.
+	 * Set the spreadsheet security prices if any differ from Moneydance.
+	 *
+	 * @param row The row with cells to potentially change
+	 * @param security The corresponding Moneydance security data
+	 */
+	private void setEarlierPricesIfDiff(XCellRange row, CurrencyType security)
+			throws MduException {
+		double[] prices = getPricesAsOfDates(security, this.earlierDates);
+
+		for (int i = 0; i < prices.length; ++i) {
+			CellHandler val = this.calcDoc.getCellHandlerByIndex(row, i + 1);
+
+			if (val != null) {
+				String dayStr = MdUtil.convDateIntToLocal(this.earlierDates[i]).format(dateFmt);
+				setPriceIfDiff(val, prices[i], security, dayStr);
+			}
+		} // end for
+
+	} // end setEarlierPricesIfDiff(XCellRange, CurrencyType)
+
+	/**
+	 * Set the spreadsheet account balance if it differs from Moneydance for the
+	 * latest date column found in the spreadsheet.
 	 *
 	 * @param val The cell to potentially change
 	 * @param account The corresponding Moneydance account
@@ -354,23 +406,15 @@ public class OdsAccessor implements MessageBundleProvider {
 			throws MduException {
 		double[] balances = MdUtil.getBalancesAsOfDates(this.root.getBook(), account,
 			this.earlierDates);
-		String lastIgnore = null;
 
 		for (int i = 0; i < balances.length; ++i) {
-			String dayStr = MdUtil.convDateIntToLocal(this.earlierDates[i]).format(dateFmt);
 			CellHandler val = this.calcDoc.getCellHandlerByIndex(row, i + 1);
 
-			if (val == null) {
-				lastIgnore = dayStr;
-			} else {
+			if (val != null) {
+				String dayStr = MdUtil.convDateIntToLocal(this.earlierDates[i]).format(dateFmt);
 				setBalanceIfDiff(val, balances[i], keyVal, dayStr);
 			}
 		} // end for
-
-		if (lastIgnore != null) {
-			System.err.format(this.locale, "Ignoring %s balance through %s.%n", keyVal,
-				lastIgnore);
-		}
 
 	} // end setEarlierBalsIfDiff(XCellRange, Account, String)
 

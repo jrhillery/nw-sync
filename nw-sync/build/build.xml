@@ -9,7 +9,7 @@ http://jakarta.apache.org/ant/index.html
   <property name="moneydance.devkit" value="C:/Users/John/Documents/Prog/moneydance-devkit-4.0"/>
   <property name="mdutil" value="${src}/../../mdutil/md-util"/>
   <property name="swingutil" value="${src}/../../mdutil/swing-util"/>
-  <property name="libreoffice.api" value="C:/Program Files/LibreOffice 5/program/classes"/>
+  <property name="libreoffice.api" value="C:/Program Files/LibreOffice/program/classes"/>
   <property name="privkeyfile" value="${build}/priv_key"/>
   <property name="pubkeyfile" value="${build}/pub_key"/>
   <property name="privkeyid" value="99"/>

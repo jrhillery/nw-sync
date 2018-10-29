@@ -37,6 +37,7 @@ import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
 import com.leastlogic.moneydance.util.MdUtil;
 import com.leastlogic.moneydance.util.MduException;
+import com.leastlogic.moneydance.util.SnapshotList;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.bridge.XBridge;
 import com.sun.star.bridge.XBridgeFactory;
@@ -123,8 +124,9 @@ public class OdsAccessor implements MessageBundleProvider {
 
 					if (security != null) {
 						// found this row's ticker symbol in Moneydance securities
-						setTodaysPriceIfDiff(val, security);
-						setEarlierPricesIfDiff(row, security);
+						SnapshotList ssList = new SnapshotList(security);
+						setTodaysPriceIfDiff(val, ssList);
+						setEarlierPricesIfDiff(row, ssList);
 					} else {
 						Account account = getAccount(keyVal);
 
@@ -164,11 +166,12 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end getAccount(String)
 
 	/**
-	 * @param security
-	 * @return The price in the last snapshot of the supplied security
+	 * @param snapshotList The list of snapshots to use
+	 * @return The price in the last snapshot supplied
 	 */
-	private double getLatestPrice(CurrencyType security) {
-		CurrencySnapshot latestSnapshot = MdUtil.getLatestSnapshot(security);
+	private double getLatestPrice(SnapshotList snapshotList) {
+		CurrencyType security = snapshotList.getSecurity();
+		CurrencySnapshot latestSnapshot = snapshotList.getLatestSnapshot();
 
 		if (latestSnapshot != null) {
 			// add this snapshot to our collection
@@ -180,15 +183,15 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end getLatestPrice(CurrencyType, NumberFormat)
 
 	/**
-	 * @param security
+	 * @param snapshotList The list of snapshots to use
 	 * @param asOfDates The dates to obtain the price for
 	 * @return Security prices as of the end of each date in asOfDates
 	 */
-	private double[] getPricesAsOfDates(CurrencyType security, int[] asOfDates) {
+	private double[] getPricesAsOfDates(SnapshotList snapshotList, int[] asOfDates) {
 		double[] prices = new double[asOfDates.length];
 
 		for (int i = prices.length - 1; i >= 0; --i) {
-			CurrencySnapshot snapshot = MdUtil.getSnapshotForDate(security, asOfDates[i]);
+			CurrencySnapshot snapshot = snapshotList.getSnapshotForDate(asOfDates[i]);
 			prices[i] = snapshot == null ? 1 : MdUtil.convRateToPrice(snapshot.getUserRate());
 		} // end for
 
@@ -219,20 +222,20 @@ public class OdsAccessor implements MessageBundleProvider {
 			this.securitySnapshots.entrySet().iterator();
 
 		if (snapshotsIterator.hasNext()) {
-			Entry<LocalDate, List<String>> snapShotsEntry = snapshotsIterator.next();
-			LocalDate marketDate = snapShotsEntry.getKey();
+			Entry<LocalDate, List<String>> snapshotsEntry = snapshotsIterator.next();
+			LocalDate marketDate = snapshotsEntry.getKey();
 
 			if (!snapshotsIterator.hasNext()) {
 				// must be a single date => use it
 				setDateIfDiff(marketDate);
 			} else {
 				// have multiple latest dates for security prices
-				reportOneOfMultipleDates(marketDate, snapShotsEntry.getValue());
+				reportOneOfMultipleDates(marketDate, snapshotsEntry.getValue());
 
 				while (snapshotsIterator.hasNext()) {
-					snapShotsEntry = snapshotsIterator.next();
-					marketDate = snapShotsEntry.getKey();
-					reportOneOfMultipleDates(marketDate, snapShotsEntry.getValue());
+					snapshotsEntry = snapshotsIterator.next();
+					marketDate = snapshotsEntry.getKey();
+					reportOneOfMultipleDates(marketDate, snapshotsEntry.getValue());
 				} // end while
 			}
 		}
@@ -295,12 +298,12 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * latest date column found in the spreadsheet.
 	 *
 	 * @param val The cell to potentially change
-	 * @param security The corresponding Moneydance security data
+	 * @param snapshotList The list of snapshots to use
 	 */
-	private void setTodaysPriceIfDiff(CellHandler val, CurrencyType security)
+	private void setTodaysPriceIfDiff(CellHandler val, SnapshotList snapshotList)
 			throws MduException {
-		double price = getLatestPrice(security);
-		setPriceIfDiff(val, price, security, "today");
+		double price = getLatestPrice(snapshotList);
+		setPriceIfDiff(val, price, snapshotList.getSecurity(), "today");
 
 	} // end setTodaysPriceIfDiff(CellHandler, CurrencyType)
 
@@ -336,18 +339,18 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * Set the spreadsheet security prices if any differ from Moneydance.
 	 *
 	 * @param row The row with cells to potentially change
-	 * @param security The corresponding Moneydance security data
+	 * @param snapshotList The list of snapshots to use
 	 */
-	private void setEarlierPricesIfDiff(XCellRange row, CurrencyType security)
+	private void setEarlierPricesIfDiff(XCellRange row, SnapshotList snapshotList)
 			throws MduException {
-		double[] prices = getPricesAsOfDates(security, this.earlierDates);
+		double[] prices = getPricesAsOfDates(snapshotList, this.earlierDates);
 
 		for (int i = 0; i < prices.length; ++i) {
 			CellHandler val = this.calcDoc.getCellHandlerByIndex(row, i + 1);
 
 			if (val != null) {
 				String dayStr = MdUtil.convDateIntToLocal(this.earlierDates[i]).format(dateFmt);
-				setPriceIfDiff(val, prices[i], security, dayStr);
+				setPriceIfDiff(val, prices[i], snapshotList.getSecurity(), dayStr);
 			}
 		} // end for
 

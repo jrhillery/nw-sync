@@ -6,6 +6,7 @@ package com.moneydance.modules.features.nwsync;
 import static javax.swing.GroupLayout.DEFAULT_SIZE;
 
 import java.awt.AWTEvent;
+import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -55,7 +56,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 */
 	private void initComponents() {
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		setSize(576, 356);
+		setSize(618, 382);
 		JPanel contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -172,6 +173,9 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 * @return null
 	 */
 	public MessageWindow goAway() {
+		Dimension winSize = getSize();
+		System.err.format(getLocale(), "Closing %s with width=%.0f, height=%.0f.%n",
+			getTitle(), winSize.getWidth(), winSize.getHeight());
 		setVisible(false);
 		dispose();
 

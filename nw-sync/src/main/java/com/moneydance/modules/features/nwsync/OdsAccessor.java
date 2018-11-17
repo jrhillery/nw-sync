@@ -69,6 +69,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	private int[] earlierDates = null;
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
+	private int numDatesSet = 0;
 	private Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
 	private Properties nwSyncProps = null;
 	private ResourceBundle msgBundle = null;
@@ -274,6 +275,7 @@ public class OdsAccessor implements MessageBundleProvider {
 				writeFormatted("NWSYNC15", oldDate.format(dateFmt), marketDate.format(dateFmt));
 
 				this.latestDateCell.setNewValue(MdUtil.convLocalToDateInt(marketDate));
+				++this.numDatesSet;
 			} else if (marketDate.isAfter(oldDate)) {
 				handleNewMonth(marketDate, oldDate);
 			}
@@ -499,10 +501,17 @@ public class OdsAccessor implements MessageBundleProvider {
 	public void commitChanges() {
 		if (isModified()) {
 			this.calcDoc.commitChanges();
+			String msgKey;
 
-			// Changed %d security price%s and %d account balance%s.
-			writeFormatted("NWSYNC12", this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
-				this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s");
+			if (this.numDatesSet == 1) {
+				// Changed %d security price%s, %d account balance%s and the rightmost date.
+				msgKey = "NWSYNC19";
+			} else {
+				// Changed %d security price%s, %d account balance%s and %d dates.
+				msgKey = "NWSYNC18";
+			}
+			writeFormatted(msgKey, this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
+				this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s", this.numDatesSet);
 		}
 
 		forgetChanges();
@@ -518,6 +527,7 @@ public class OdsAccessor implements MessageBundleProvider {
 		}
 		this.numPricesSet = 0;
 		this.numBalancesSet = 0;
+		this.numDatesSet = 0;
 
 	} // end forgetChanges()
 

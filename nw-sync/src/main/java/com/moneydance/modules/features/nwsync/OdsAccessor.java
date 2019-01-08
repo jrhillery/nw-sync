@@ -11,16 +11,12 @@ import static com.sun.star.uno.UnoRuntime.queryInterface;
 import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.format.FormatStyle.MEDIUM;
 
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +48,9 @@ import com.sun.star.table.XCell;
 import com.sun.star.table.XCellRange;
 import com.sun.star.uno.XComponentContext;
 
+import ooo.connector.BootstrapSocketConnector;
+import ooo.connector.server.OOoServer;
+
 /**
  * Provides read/write access to an ods (OpenOffice/LibreOffice) spreadsheet
  * document.
@@ -73,8 +72,6 @@ public class OdsAccessor implements MessageBundleProvider {
 	private Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
 	private Properties nwSyncProps = null;
 	private ResourceBundle msgBundle = null;
-
-	private static boolean classPathUpdated = false;
 
 	private static final String propertiesFileName = "nw-sync.properties";
 	private static final DateTimeFormatter dateFmt = DateTimeFormatter.ofLocalizedDate(MEDIUM);
@@ -592,57 +589,19 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end getSpreadsheetDocs()
 
 	/**
-	 * Modify the system class loader's class path to add the required
-	 * LibreOffice jar files. Need to use reflection since the
-	 * URLClassLoader.addURL(URL) method is protected.
-	 *
-	 * @param officePath Location of the installed LibreOffice jar files
-	 */
-	private void addOfficeApiToClassPath(Path officePath) throws MduException {
-		URLClassLoader sysClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
-		Method addURL;
-		try {
-			addURL = URLClassLoader.class.getDeclaredMethod("addURL", new Class[] { URL.class });
-		} catch (Exception e) {
-			// Exception obtaining class loader addURL method.
-			throw asException(e, "NWSYNC49");
-		}
-		addURL.setAccessible(true);
-		for (String apiJar : new String[] {
-				"juh.jar", "jurt.jar", "ridl.jar", "unoil.jar", "unoloader.jar" }) {
-			URL apiUrl;
-			try {
-				apiUrl = officePath.resolve(apiJar).toUri().toURL();
-			} catch (Exception e) {
-				// Exception obtaining URL to jar %s in path %s.
-				throw asException(e, "NWSYNC50", apiJar, officePath);
-			}
-			try {
-				addURL.invoke(sysClassLoader, apiUrl);
-			} catch (Exception e) {
-				// Exception adding %s to class path.
-				throw asException(e, "NWSYNC51", apiUrl);
-			}
-		} // end for
-
-	} // end addOfficeApiToClassPath(Path)
-
-	/**
 	 * @return A LibreOffice desktop interface
 	 */
 	private XDesktop2 getOfficeDesktop() throws MduException {
-		if (!classPathUpdated) {
-			String officeInstallPath = getNwSyncProps().getProperty("office.install.path");
-			if (officeInstallPath == null)
-				// Unable to obtain office.install.path from %s on the class path.
-				throw asException(null, "NWSYNC54", propertiesFileName);
+		String officeInstallPath = getNwSyncProps().getProperty("office.install.path");
+		if (officeInstallPath == null)
+			// Unable to obtain office.install.path from %s on the class path.
+			throw asException(null, "NWSYNC54", propertiesFileName);
 
-			addOfficeApiToClassPath(Paths.get(officeInstallPath, "program", "classes"));
-			classPathUpdated = true;
-		}
 		XComponentContext remoteContext;
 		try {
-			remoteContext = Bootstrap.bootstrap();
+			List<String> oooOptions = Arrays.asList(Bootstrap.getDefaultOptions());
+			remoteContext = new BootstrapSocketConnector(
+				new OOoServer(officeInstallPath, oooOptions)).connect();
 		} catch (Throwable e) {
 			// Exception obtaining office context.
 			throw asException(e, "NWSYNC33");

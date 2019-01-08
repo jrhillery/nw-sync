@@ -10,6 +10,7 @@ http://jakarta.apache.org/ant/index.html
   <property name="mdutil" value="${src}/../../mdutil/md-util"/>
   <property name="swingutil" value="${src}/../../mdutil/swing-util"/>
   <property name="libreoffice.api" value="C:/Program Files/LibreOffice/program/classes"/>
+  <property name="bootconnector" value="${src}/../../../../git/bootstrap-connector"/>
   <property name="privkeyfile" value="${build}/priv_key"/>
   <property name="pubkeyfile" value="${build}/pub_key"/>
   <property name="privkeyid" value="99"/>
@@ -32,7 +33,7 @@ http://jakarta.apache.org/ant/index.html
   <path id="classpath">
     <pathelement path="${moneydance.devkit}/lib/extadmin.jar"/>
     <pathelement path="${moneydance.devkit}/lib/moneydance-dev.jar"/>
-  	<path refid="libreoffice.lib"/>
+    <path refid="libreoffice.lib"/>
   </path>
 
   <target name="init">
@@ -42,16 +43,24 @@ http://jakarta.apache.org/ant/index.html
   <target name="nwsync" depends="init">
     <javac debug="${debug}" optimize="${optimize}"
       classpathref="classpath" destdir="${build}">
-    	<src path="${src}/src/main/java"/>
-    	<src path="${swingutil}/src/main/java"/>
-    	<src path="${mdutil}/src/main/java"/>
-  	</javac>
+        <src path="${src}/src/main/java"/>
+        <src path="${swingutil}/src/main/java"/>
+        <src path="${mdutil}/src/main/java"/>
+        <src path="${bootconnector}/src/main/java"/>
+    </javac>
 
     <jar destfile="${build}/nwsync.mxt">
       <fileset dir="${src}/src/main/resources"/>
-      <fileset dir="${build}" includes="com/**"/>
+      <fileset dir="${build}" includes="com/** ooo/**"/>
+      <zipgroupfileset dir="${libreoffice.api}" includes="
+        juh.jar
+        jurt.jar
+        ridl.jar
+        unoil.jar
+        unoloader.jar"/>
     </jar>
 
+    <sleep seconds="5"/>
     <java classname="com.moneydance.admin.KeyAdmin"
       classpathref="classpath"
       inputstring="nwsync's passphrase">
@@ -61,9 +70,10 @@ http://jakarta.apache.org/ant/index.html
       <arg value="nwsync"/>
       <arg line="${build}/nwsync.mxt"/>
     </java>
-  	<delete file="${build}/nwsync.mxt"/>
-  	<delete dir="${build}/com"/>
     <move file="s-nwsync.mxt" tofile="${dist}/nwsync.mxt"/>
+    <delete dir="${build}/com"/>
+    <delete dir="${build}/ooo"/>
+    <!-- delete file="${build}/nwsync.mxt"/ -->
   </target>
 
   <target name="genkeys" depends="init">

@@ -12,5 +12,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LibreOffice API Installed"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/swing-util"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/md-util"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/bootstrap-connector"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

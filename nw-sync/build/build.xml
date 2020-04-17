@@ -6,7 +6,7 @@ http://jakarta.apache.org/ant/index.html
 <project name="nwsync" default="all" basedir=".">
   <property name="src" value=".."/>
   <property name="build" value="."/>
-  <property name="moneydance.devkit" value="C:/Users/John/Documents/Prog/moneydance-devkit-4.0"/>
+  <property name="moneydance.devkit" value="C:/Users/John/Documents/Prog/moneydance-devkit-5.1"/>
   <property name="mdutil" value="${src}/../../mdutil/md-util"/>
   <property name="swingutil" value="${src}/../../mdutil/swing-util"/>
   <property name="libreoffice.api" value="C:/Program Files/LibreOffice/program/classes"/>

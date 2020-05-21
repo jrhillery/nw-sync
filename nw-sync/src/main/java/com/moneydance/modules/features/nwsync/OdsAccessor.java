@@ -365,7 +365,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 */
 	private void setTodaysBalIfDiff(CellHandler val, Account account, String keyVal)
 			throws MduException {
-		double balance = MdUtil.getCurrentBalance(account);
+		BigDecimal balance = MdUtil.getCurrentBalance(account);
 		setBalanceIfDiff(val, balance, keyVal, "today");
 
 	} // end setTodaysBalIfDiff(CellHandler, Account, String)
@@ -376,16 +376,15 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * @param keyVal The spreadsheet name of this account
 	 * @param dayStr The applicable day
 	 */
-	private void setBalanceIfDiff(CellHandler val, double balance, String keyVal,
+	private void setBalanceIfDiff(CellHandler val, BigDecimal balance, String keyVal,
 			String dayStr) throws MduException {
 		Number oldBalance = val.getValue();
 
 		if (oldBalance instanceof Double) {
 			// compare balance rounded to the tenth place past the decimal point
-			double oldBal = BigDecimal.valueOf(oldBalance.doubleValue())
-				.setScale(10, HALF_EVEN).doubleValue();
+			BigDecimal oldBal = BigDecimal.valueOf(oldBalance.doubleValue()).setScale(10, HALF_EVEN);
 
-			if (balance != oldBal) {
+			if (balance.compareTo(oldBal) != 0) {
 				// Change %s balance for %s from %s to %s.
 				writeFormatted("NWSYNC11", keyVal, dayStr, val.getDisplayText(),
 					val.getNumberFormat().format(balance));
@@ -395,7 +394,7 @@ public class OdsAccessor implements MessageBundleProvider {
 			}
 		}
 
-	} // end setBalanceIfDiff(CellHandler, double, String, String)
+	} // end setBalanceIfDiff(CellHandler, BigDecimal, String, String)
 
 	/**
 	 * Set the spreadsheet account balances if any differ from Moneydance.
@@ -406,7 +405,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 */
 	private void setEarlierBalsIfDiff(XCellRange row, Account account, String keyVal)
 			throws MduException {
-		double[] balances = MdUtil.getBalancesAsOfDates(this.root.getBook(), account,
+		BigDecimal[] balances = MdUtil.getBalancesAsOfDates(this.root.getBook(), account,
 			this.earlierDates);
 
 		for (int i = 0; i < balances.length; ++i) {

@@ -190,7 +190,7 @@ public class OdsAccessor implements MessageBundleProvider {
 
 		for (int i = prices.length - 1; i >= 0; --i) {
 			CurrencySnapshot snapshot = snapshotList.getSnapshotForDate(asOfDates[i]);
-			prices[i] = snapshot == null ? 1 : MdUtil.convRateToPrice(snapshot.getUserRate());
+			prices[i] = snapshot == null ? 1 : MdUtil.convRateToPrice(snapshot.getRate());
 		} // end for
 
 		return prices;

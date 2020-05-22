@@ -2,7 +2,10 @@
 <classpath>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="src" path="src/main/resources"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/swing-util"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/md-util"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/bootstrap-connector"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="/moneydance-devkit-5.1/lib/extadmin.jar"/>
 	<classpathentry kind="lib" path="/moneydance-devkit-5.1/lib/moneydance-dev.jar">
 		<attributes>
@@ -10,8 +13,5 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LibreOffice API Installed"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/swing-util"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/md-util"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/bootstrap-connector"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

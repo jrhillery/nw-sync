@@ -3,8 +3,6 @@
  */
 package com.moneydance.modules.features.nwsync;
 
-import static com.leastlogic.swing.util.HTMLPane.CL_DECREASE;
-import static com.leastlogic.swing.util.HTMLPane.CL_INCREASE;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
 import static com.sun.star.uno.UnoRuntime.queryInterface;
@@ -34,6 +32,7 @@ import com.infinitekind.moneydance.model.CurrencyType;
 import com.leastlogic.moneydance.util.MdUtil;
 import com.leastlogic.moneydance.util.MduException;
 import com.leastlogic.moneydance.util.SnapshotList;
+import com.leastlogic.swing.util.HTMLPane;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.bridge.XBridge;
 import com.sun.star.bridge.XBridgeFactory;
@@ -167,7 +166,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * @param snapshotList The list of snapshots to use
 	 * @return The price in the last snapshot supplied
 	 */
-	private double getLatestPrice(SnapshotList snapshotList) {
+	private BigDecimal getLatestPrice(SnapshotList snapshotList) {
 		CurrencyType security = snapshotList.getSecurity();
 		CurrencySnapshot latestSnapshot = snapshotList.getLatestSnapshot();
 
@@ -178,23 +177,24 @@ public class OdsAccessor implements MessageBundleProvider {
 		}
 
 		return MdUtil.validateCurrentUserRate(security, latestSnapshot);
-	} // end getLatestPrice(CurrencyType, NumberFormat)
+	} // end getLatestPrice(SnapshotList)
 
 	/**
 	 * @param snapshotList The list of snapshots to use
 	 * @param asOfDates The dates to obtain the price for
 	 * @return Security prices as of the end of each date in asOfDates
 	 */
-	private double[] getPricesAsOfDates(SnapshotList snapshotList, int[] asOfDates) {
-		double[] prices = new double[asOfDates.length];
+	private BigDecimal[] getPricesAsOfDates(SnapshotList snapshotList, int[] asOfDates) {
+		BigDecimal[] prices = new BigDecimal[asOfDates.length];
 
 		for (int i = prices.length - 1; i >= 0; --i) {
 			CurrencySnapshot snapshot = snapshotList.getSnapshotForDate(asOfDates[i]);
-			prices[i] = snapshot == null ? 1 : MdUtil.convRateToPrice(snapshot.getRate());
+			prices[i] = snapshot == null ? BigDecimal.ONE
+					: MdUtil.convRateToPrice(snapshot.getRate());
 		} // end for
 
 		return prices;
-	} // end getPricesAsOfDates(CurrencyType, int[])
+	} // end getPricesAsOfDates(SnapshotList, int[])
 
 	/**
 	 * @param dateInt The date these securities were updated
@@ -301,10 +301,10 @@ public class OdsAccessor implements MessageBundleProvider {
 	 */
 	private void setTodaysPriceIfDiff(CellHandler val, SnapshotList snapshotList)
 			throws MduException {
-		double price = getLatestPrice(snapshotList);
+		BigDecimal price = getLatestPrice(snapshotList);
 		setPriceIfDiff(val, price, snapshotList.getSecurity(), "today");
 
-	} // end setTodaysPriceIfDiff(CellHandler, CurrencyType)
+	} // end setTodaysPriceIfDiff(CellHandler, SnapshotList)
 
 	/**
 	 * @param val The cell to potentially change
@@ -312,27 +312,26 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * @param security The corresponding Moneydance security data
 	 * @param dayStr The applicable day
 	 */
-	private void setPriceIfDiff(CellHandler val, double price, CurrencyType security,
+	private void setPriceIfDiff(CellHandler val, BigDecimal price, CurrencyType security,
 			String dayStr) throws MduException {
 		Number oldVal = val.getValue();
 
 		if (oldVal instanceof Double) {
-			double oldPrice = MdUtil.roundPrice(oldVal.doubleValue());
+			BigDecimal oldPrice = MdUtil.roundPrice(oldVal.doubleValue());
 
-			if (price != oldPrice) {
+			if (price.compareTo(oldPrice) != 0) {
 				// Change %s (%s) price for %s from %s to %s (<span class\="%s">%+.2f%%</span>).
 				NumberFormat priceFmt = val.getNumberFormat();
-				String spanCl = price < oldPrice ? CL_DECREASE : CL_INCREASE;
 				writeFormatted("NWSYNC10", security.getName(), security.getTickerSymbol(), dayStr,
-					val.getDisplayText(), priceFmt.format(price), spanCl,
-					(price / oldPrice - 1) * 100);
+					val.getDisplayText(), priceFmt.format(price), HTMLPane.getSpanCl(price, oldPrice),
+					(price.doubleValue() / oldPrice.doubleValue() - 1) * 100);
 
 				val.setNewValue(price);
 				++this.numPricesSet;
 			}
 		}
 
-	} // end setPriceIfDiff(CellHandler, double, CurrencyType, String)
+	} // end setPriceIfDiff(CellHandler, BigDecimal, CurrencyType, String)
 
 	/**
 	 * Set the spreadsheet security prices if any differ from Moneydance.
@@ -342,7 +341,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 */
 	private void setEarlierPricesIfDiff(XCellRange row, SnapshotList snapshotList)
 			throws MduException {
-		double[] prices = getPricesAsOfDates(snapshotList, this.earlierDates);
+		BigDecimal[] prices = getPricesAsOfDates(snapshotList, this.earlierDates);
 
 		for (int i = 0; i < prices.length; ++i) {
 			CellHandler val = this.calcDoc.getCellHandlerByIndex(row, i + 1);
@@ -353,7 +352,7 @@ public class OdsAccessor implements MessageBundleProvider {
 			}
 		} // end for
 
-	} // end setEarlierPricesIfDiff(XCellRange, CurrencyType)
+	} // end setEarlierPricesIfDiff(XCellRange, SnapshotList)
 
 	/**
 	 * Set the spreadsheet account balance if it differs from Moneydance for the

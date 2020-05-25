@@ -70,13 +70,13 @@ http://jakarta.apache.org/ant/index.html
       <arg value="nwsync"/>
       <arg line="${build}/nwsync.mxt"/>
     </java>
-    <move file="s-nwsync.mxt" tofile="${dist}/nwsync.mxt"/>
+    <delete file="${build}/nwsync.mxt"/>
     <delete dir="${build}/com"/>
     <delete dir="${build}/ooo"/>
-    <!-- delete file="${build}/nwsync.mxt"/ -->
+    <move file="s-nwsync.mxt" tofile="${dist}/nwsync.mxt"/>
   </target>
 
-  <target name="genkeys" depends="init">
+  <target name="genkeys">
     <java 
       inputstring="nwsync's passphrase"
       classpathref="classpath"

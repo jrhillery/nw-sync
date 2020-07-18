@@ -70,10 +70,15 @@ http://jakarta.apache.org/ant/index.html
       <arg value="nwsync"/>
       <arg line="${build}/nwsync.mxt"/>
     </java>
-    <delete file="${build}/nwsync.mxt"/>
     <delete dir="${build}/com"/>
     <delete dir="${build}/ooo"/>
     <move file="s-nwsync.mxt" tofile="${dist}/nwsync.mxt"/>
+  </target>
+
+  <target name="clean">
+    <delete deleteonexit="true" verbose="true">
+      <fileset dir="${build}" includes="*.mxt"/>
+    </delete>
   </target>
 
   <target name="genkeys">
@@ -87,6 +92,6 @@ http://jakarta.apache.org/ant/index.html
     </java>
   </target>
 
-  <target name="all" depends="nwsync"/>
+  <target name="all" depends="nwsync,clean"/>
 
 </project>

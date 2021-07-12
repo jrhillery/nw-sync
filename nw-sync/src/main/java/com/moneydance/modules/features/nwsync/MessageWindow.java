@@ -33,7 +33,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 
 	static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages"; //$NON-NLS-1$
 	private static final ResourceBundle msgBundle = ResourceBundle.getBundle(baseMessageBundleName);
-	private static final long serialVersionUID = -3229995555109327972L;
+	private static final long serialVersionUID = 8224939513161266369L;
 
 	/**
 	 * Create the frame.

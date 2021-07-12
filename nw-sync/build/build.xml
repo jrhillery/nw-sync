@@ -23,10 +23,7 @@ http://jakarta.apache.org/ant/index.html
   <property name="optimize"  value="off"/>
 
   <path id="libreoffice.lib">
-    <pathelement path="${libreoffice.api}/juh.jar"/>
-    <pathelement path="${libreoffice.api}/jurt.jar"/>
-    <pathelement path="${libreoffice.api}/ridl.jar"/>
-    <pathelement path="${libreoffice.api}/unoil.jar"/>
+    <pathelement path="${libreoffice.api}/libreoffice.jar"/>
     <pathelement path="${libreoffice.api}/unoloader.jar"/>
   </path>
 
@@ -53,10 +50,7 @@ http://jakarta.apache.org/ant/index.html
       <fileset dir="${src}/src/main/resources"/>
       <fileset dir="${build}" includes="com/** ooo/**"/>
       <zipgroupfileset dir="${libreoffice.api}" includes="
-        juh.jar
-        jurt.jar
-        ridl.jar
-        unoil.jar
+        libreoffice.jar
         unoloader.jar"/>
     </jar>
 

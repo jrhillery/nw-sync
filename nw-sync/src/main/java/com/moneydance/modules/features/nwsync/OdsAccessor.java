@@ -523,6 +523,7 @@ public class OdsAccessor implements MessageBundleProvider {
 		this.numPricesSet = 0;
 		this.numBalancesSet = 0;
 		this.numDatesSet = 0;
+		this.securitySnapshots.clear();
 
 	} // end forgetChanges()
 

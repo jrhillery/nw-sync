@@ -56,7 +56,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 */
 	private void initComponents() {
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		setSize(658, 407);
+		setSize(692, 428);
 		JPanel contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);

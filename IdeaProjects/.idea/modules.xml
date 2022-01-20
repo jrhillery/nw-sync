@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/IdeaProjects.iml" filepath="$PROJECT_DIR$/.idea/IdeaProjects.iml" />
+      <module fileurl="file://$PROJECT_DIR$/bootstrap-connector.iml" filepath="$PROJECT_DIR$/bootstrap-connector.iml" />
+      <module fileurl="file://$PROJECT_DIR$/md-util.iml" filepath="$PROJECT_DIR$/md-util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/nw-sync.iml" filepath="$PROJECT_DIR$/nw-sync.iml" />
+      <module fileurl="file://$PROJECT_DIR$/swing-util.iml" filepath="$PROJECT_DIR$/swing-util.iml" />
+    </modules>
+  </component>
+</project>

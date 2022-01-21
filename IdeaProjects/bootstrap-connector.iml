@@ -5,9 +5,9 @@
     <output-test url="file://$MODULE_DIR$/../../../../git/bootstrap-connector/target/test-classes" />
     <content url="file://$MODULE_DIR$/../../../../git/bootstrap-connector">
       <sourceFolder url="file://$MODULE_DIR$/../../../../git/bootstrap-connector/src/main/java" isTestSource="false" />
-      <excludeFolder url="file://$MODULE_DIR$/../../../../git/bootstrap-connector/target" />
       <excludeFolder url="file://$MODULE_DIR$/../../../../git/bootstrap-connector/bin" />
       <excludeFolder url="file://$MODULE_DIR$/../../../../git/bootstrap-connector/.settings" />
+      <excludeFolder url="file://$MODULE_DIR$/../../../../git/bootstrap-connector/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

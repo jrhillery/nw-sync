@@ -139,7 +139,7 @@ public abstract class CellHandler {
 	/**
 	 * Sole constructor.
 	 *
-	 * @param cell Office Cell instance to be handled
+	 * @param cell    Office Cell instance to be handled
 	 * @param calcDoc Local spreadsheet document containing this cell
 	 */
 	public CellHandler(XCell cell, CalcDoc calcDoc) {
@@ -206,13 +206,13 @@ public abstract class CellHandler {
 	} // end toString()
 
 	/**
-	 * @param cell
+	 * @param cell The cell to read
 	 * @return The text displayed in cell
 	 */
 	public static String asDisplayText(XCell cell) {
 		XText cellText = queryInterface(XText.class, cell);
 
-		return cellText == null ? null : cellText.getString();
+		return cellText == null ? "" : cellText.getString();
 	} // end asDisplayText(XCell)
 
 } // end class CellHandler

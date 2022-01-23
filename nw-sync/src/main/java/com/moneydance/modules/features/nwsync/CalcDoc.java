@@ -38,19 +38,19 @@ import com.sun.star.util.XNumberFormatsSupplier;
  */
 public class CalcDoc {
 
-	private XSpreadsheetDocument spreadsheetDoc;
-	private MessageBundleProvider msgProvider;
-	private String urlString;
-	private XNumberFormats numberFormats;
-	private LocalDate zeroDate;
+	private final XSpreadsheetDocument spreadsheetDoc;
+	private final MessageBundleProvider msgProvider;
+	private final String urlString;
+	private final XNumberFormats numberFormats;
+	private final LocalDate zeroDate;
 
-	private List<CellHandler> changes = new ArrayList<>();
+	private final List<CellHandler> changes = new ArrayList<>();
 
 	/**
 	 * Sole constructor.
 	 *
 	 * @param spreadsheetDoc Spreadsheet document
-	 * @param msgProvider Message bundle provider
+	 * @param msgProvider    Message bundle provider
 	 */
 	public CalcDoc(XSpreadsheetDocument spreadsheetDoc,
 			MessageBundleProvider msgProvider) throws MduException {
@@ -99,7 +99,7 @@ public class CalcDoc {
 			// Unable to obtain first sheet in %s.
 			throw asException(null, "NWSYNC40", this.urlString);
 
-		// get a cursor so we don't iterator over all the empty rows at the bottom
+		// get a cursor, so we don't iterator over all the empty rows at the bottom
 		XUsedAreaCursor cur = queryInterface(XUsedAreaCursor.class, firstSheet.createCursor());
 		if (cur == null)
 			// Unable to get cursor in %s.
@@ -150,7 +150,7 @@ public class CalcDoc {
 	/**
 	 * Add a cell handler to our list of changes.
 	 *
-	 * @param cHandler
+	 * @param cHandler The cell handler to add
 	 */
 	public void addChange(CellHandler cHandler) {
 		if (cHandler != null) {
@@ -194,8 +194,8 @@ public class CalcDoc {
 	} // end toString()
 
 	/**
-	 * @param cell
-	 * @param contentType
+	 * @param cell        The cell to check
+	 * @param contentType The content type of interest
 	 * @return True when the supplied cell has the specified content type
 	 */
 	public static boolean isContentType(XCell cell, CellContentType contentType) {
@@ -204,7 +204,7 @@ public class CalcDoc {
 	} // end isContentType(XCell, CellContentType)
 
 	/**
-	 * @param cell
+	 * @param cell The cell to read
 	 * @return The cell's number format properties
 	 */
 	public XPropertySet getNumberFormatProps(XCell cell) throws MduException {
@@ -225,7 +225,7 @@ public class CalcDoc {
 	} // end getNumberFormatProps(XCell)
 
 	/**
-	 * @param cell
+	 * @param cell The cell to read
 	 * @return The cell's number format type
 	 */
 	private short getNumberFormatType(XCell cell) throws MduException {
@@ -242,8 +242,8 @@ public class CalcDoc {
 	} // end getNumberFormatType(XCell)
 
 	/**
-	 * @param row Office Row instance
-	 * @param index
+	 * @param row   Office Row instance
+	 * @param index Zero-based index to use
 	 * @return CellHandler instance for the cell at zero-based index in the supplied row
 	 */
 	public CellHandler getCellHandlerByIndex(XCellRange row, int index) throws MduException {
@@ -263,8 +263,8 @@ public class CalcDoc {
 	} // end getCellHandlerByIndex(XCellRange, int)
 
 	/**
-	 * @param row Office Row instance
-	 * @param index
+	 * @param row   Office Row instance
+	 * @param index Zero-based index to use
 	 * @return Cell at zero-based index in the supplied row
 	 */
 	public XCell getCellByIndex(XCellRange row, int index) throws MduException {
@@ -278,8 +278,8 @@ public class CalcDoc {
 	} // end getCellByIndex(XCellRange, int)
 
 	/**
-	 * @param cause Exception that caused this (null if none)
-	 * @param key The resource bundle key (or message)
+	 * @param cause  Exception that caused this (null if none)
+	 * @param key    The resource bundle key (or message)
 	 * @param params Optional parameters for the detail message
 	 * @return An exception with the supplied data
 	 */

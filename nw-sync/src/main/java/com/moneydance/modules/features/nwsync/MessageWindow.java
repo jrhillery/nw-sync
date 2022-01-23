@@ -11,6 +11,7 @@ import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
+import java.io.Serial;
 import java.util.ResourceBundle;
 
 import javax.swing.GroupLayout;
@@ -27,18 +28,19 @@ import javax.swing.border.EmptyBorder;
 import com.leastlogic.swing.util.HTMLPane;
 
 public class MessageWindow extends JFrame implements ActionListener {
-	private Main feature;
+	private final Main feature;
 	private JButton btnCommit;
 	private HTMLPane pnOutputLog;
 
 	static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages"; //$NON-NLS-1$
 	private static final ResourceBundle msgBundle = ResourceBundle.getBundle(baseMessageBundleName);
+	@Serial
 	private static final long serialVersionUID = 8224939513161266369L;
 
 	/**
 	 * Create the frame.
 	 *
-	 * @param feature
+	 * @param feature Our main class
 	 */
 	public MessageWindow(Main feature) {
 		super((feature == null ? msgBundle.getString("MessageWindow.window.title.default") //$NON-NLS-1$
@@ -88,7 +90,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	} // end initComponents()
 
 	/**
-	 * @param button
+	 * @param button The button to adjust
 	 */
 	private void reducePreferredHeight(JComponent button) {
 		HTMLPane.reduceHeight(button, 20);
@@ -114,7 +116,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	/**
 	 * Invoked when an action occurs.
 	 *
-	 * @param event
+	 * @param event The event to be processed
 	 */
 	public void actionPerformed(ActionEvent event) {
 		Object source = event.getSource();
@@ -126,7 +128,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	} // end actionPerformed(ActionEvent)
 
 	/**
-	 * @param text HTML text to append to the output log text area
+	 * @param text HTML-text to append to the output log text area
 	 */
 	public void addText(String text) {
 		this.pnOutputLog.addText(text);
@@ -152,7 +154,7 @@ public class MessageWindow extends JFrame implements ActionListener {
 	/**
 	 * Processes events on this window.
 	 *
-	 * @param event
+	 * @param event The event to be processed
 	 */
 	protected void processEvent(AWTEvent event) {
 		if (event.getID() == WindowEvent.WINDOW_CLOSING) {
@@ -186,14 +188,12 @@ public class MessageWindow extends JFrame implements ActionListener {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					MessageWindow frame = new MessageWindow(null);
-					frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+		EventQueue.invokeLater(() -> {
+			try {
+				MessageWindow frame = new MessageWindow(null);
+				frame.setVisible(true);
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		});
 

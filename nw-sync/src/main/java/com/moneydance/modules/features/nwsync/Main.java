@@ -11,14 +11,15 @@ import com.moneydance.apps.md.controller.FeatureModule;
 public class Main extends FeatureModule {
 	private MessageWindow messageWindow = null;
 	private OdsAccessor odsAcc = null;
+	private final Object synchObj = new Object();
 
 	/**
-	 * Register this module to be invoked via the extensions menu.
+	 * Register this module to be invoked via the Extensions menu.
 	 *
 	 * @see com.moneydance.apps.md.controller.FeatureModule#init()
 	 */
 	public void init() {
-		getContext().registerFeature(this, "donwsync", null, getName());
+		getContext().registerFeature(this, "do:nw:sync", null, getName());
 
 	} // end init()
 
@@ -36,7 +37,7 @@ public class Main extends FeatureModule {
 				getContext().getCurrentAccountBook());
 		}
 		try {
-			synchronized (this.odsAcc) {
+			synchronized (this.synchObj) {
 				this.messageWindow.clearText();
 				this.odsAcc.forgetChanges();
 				this.odsAcc.syncNwData();
@@ -53,7 +54,7 @@ public class Main extends FeatureModule {
 	 */
 	void commitChanges() {
 		try {
-			synchronized (this.odsAcc) {
+			synchronized (this.synchObj) {
 				this.odsAcc.commitChanges();
 			}
 			this.messageWindow.enableCommitButton(this.odsAcc.isModified());

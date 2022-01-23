@@ -55,10 +55,10 @@ import ooo.connector.server.OOoServer;
  * document.
  */
 public class OdsAccessor implements MessageBundleProvider {
-	private MessageWindow messageWindow;
-	private Locale locale;
-	private Account root;
-	private CurrencyTable securities;
+	private final MessageWindow messageWindow;
+	private final Locale locale;
+	private final Account root;
+	private final CurrencyTable securities;
 
 	private CalcDoc calcDoc = null;
 	private XCellRange dateRow = null;
@@ -68,7 +68,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
 	private int numDatesSet = 0;
-	private Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
+	private final Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
 	private Properties nwSyncProps = null;
 	private ResourceBundle msgBundle = null;
 
@@ -78,8 +78,8 @@ public class OdsAccessor implements MessageBundleProvider {
 	/**
 	 * Sole constructor.
 	 *
-	 * @param messageWindow
-	 * @param accountBook Moneydance account book
+	 * @param messageWindow The nw sync window to use
+	 * @param accountBook   Moneydance account book
 	 */
 	public OdsAccessor(MessageWindow messageWindow, AccountBook accountBook) {
 		this.messageWindow = messageWindow;
@@ -96,7 +96,7 @@ public class OdsAccessor implements MessageBundleProvider {
 		CalcDoc calcDoc = getCalcDoc();
 
 		if (calcDoc != null && calcDoc.getSheets() == null) {
-			// can't access the sheets, force a reconnect
+			// can't access the sheets, force a reconnection
 			this.calcDoc = null;
 			calcDoc = getCalcDoc();
 		}
@@ -148,7 +148,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end syncNwData()
 
 	/**
-	 * @param keyVal
+	 * @param keyVal Account name:sub-account name
 	 * @return The Moneydance account corresponding to keyVal
 	 */
 	private Account getAccount(String keyVal) {
@@ -181,7 +181,7 @@ public class OdsAccessor implements MessageBundleProvider {
 
 	/**
 	 * @param snapshotList The list of snapshots to use
-	 * @param asOfDates The dates to obtain the price for
+	 * @param asOfDates    The dates to obtain the price for
 	 * @return Security prices as of the end of each date in asOfDates
 	 */
 	private BigDecimal[] getPricesAsOfDates(SnapshotList snapshotList, int[] asOfDates) {
@@ -202,14 +202,8 @@ public class OdsAccessor implements MessageBundleProvider {
 	 */
 	private List<String> getSecurityListForDate(int dateInt) {
 		LocalDate marketDate = MdUtil.convDateIntToLocal(dateInt);
-		List<String> daysSecurities = this.securitySnapshots.get(marketDate);
 
-		if (daysSecurities == null) {
-			daysSecurities = new ArrayList<>();
-			this.securitySnapshots.put(marketDate, daysSecurities);
-		}
-
-		return daysSecurities;
+		return this.securitySnapshots.computeIfAbsent(marketDate, k -> new ArrayList<>());
 	} // end getSecurityListForDate(int)
 
 	/**
@@ -241,7 +235,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end analyzeSecurityDates()
 
 	/**
-	 * @param marketDate The date these securities were updated
+	 * @param marketDate     The date these securities were updated
 	 * @param daysSecurities The list of security names updated on market date
 	 */
 	private void reportOneOfMultipleDates(LocalDate marketDate, List<String> daysSecurities)
@@ -282,7 +276,7 @@ public class OdsAccessor implements MessageBundleProvider {
 
 	/**
 	 * @param marketDate The new date to use
-	 * @param oldDate The date from the spreadsheet
+	 * @param oldDate    The date from the spreadsheet
 	 */
 	private void handleNewMonth(LocalDate marketDate, LocalDate oldDate) throws MduException {
 		// A new month column is needed to change date from %s to %s.
@@ -296,7 +290,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * Set the spreadsheet security price if it differs from Moneydance for the
 	 * latest date column found in the spreadsheet.
 	 *
-	 * @param val The cell to potentially change
+	 * @param val          The cell to potentially change
 	 * @param snapshotList The list of snapshots to use
 	 */
 	private void setTodaysPriceIfDiff(CellHandler val, SnapshotList snapshotList)
@@ -307,10 +301,10 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end setTodaysPriceIfDiff(CellHandler, SnapshotList)
 
 	/**
-	 * @param val The cell to potentially change
-	 * @param price The new price
+	 * @param val      The cell to potentially change
+	 * @param price    The new price
 	 * @param security The corresponding Moneydance security data
-	 * @param dayStr The applicable day
+	 * @param dayStr   The applicable day
 	 */
 	private void setPriceIfDiff(CellHandler val, BigDecimal price, CurrencyType security,
 			String dayStr) throws MduException {
@@ -336,7 +330,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	/**
 	 * Set the spreadsheet security prices if any differ from Moneydance.
 	 *
-	 * @param row The row with cells to potentially change
+	 * @param row          The row with cells to potentially change
 	 * @param snapshotList The list of snapshots to use
 	 */
 	private void setEarlierPricesIfDiff(XCellRange row, SnapshotList snapshotList)
@@ -358,9 +352,9 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * Set the spreadsheet account balance if it differs from Moneydance for the
 	 * latest date column found in the spreadsheet.
 	 *
-	 * @param val The cell to potentially change
+	 * @param val     The cell to potentially change
 	 * @param account The corresponding Moneydance account
-	 * @param keyVal The spreadsheet name of this account
+	 * @param keyVal  The spreadsheet name of this account
 	 */
 	private void setTodaysBalIfDiff(CellHandler val, Account account, String keyVal)
 			throws MduException {
@@ -370,10 +364,10 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end setTodaysBalIfDiff(CellHandler, Account, String)
 
 	/**
-	 * @param val The cell to potentially change
+	 * @param val     The cell to potentially change
 	 * @param balance The new balance
-	 * @param keyVal The spreadsheet name of this account
-	 * @param dayStr The applicable day
+	 * @param keyVal  The spreadsheet name of this account
+	 * @param dayStr  The applicable day
 	 */
 	private void setBalanceIfDiff(CellHandler val, BigDecimal balance, String keyVal,
 			String dayStr) throws MduException {
@@ -398,9 +392,9 @@ public class OdsAccessor implements MessageBundleProvider {
 	/**
 	 * Set the spreadsheet account balances if any differ from Moneydance.
 	 *
-	 * @param row The row with cells to potentially change
+	 * @param row     The row with cells to potentially change
 	 * @param account The corresponding Moneydance account
-	 * @param keyVal The spreadsheet name of this account
+	 * @param keyVal  The spreadsheet name of this account
 	 */
 	private void setEarlierBalsIfDiff(XCellRange row, Account account, String keyVal)
 			throws MduException {
@@ -421,8 +415,8 @@ public class OdsAccessor implements MessageBundleProvider {
 	/**
 	 * Capture row with 'Date' in first column.
 	 *
-	 * @param rowIterator
-	 * @param calcDoc
+	 * @param rowIterator Spreadsheet row iterator
+	 * @param calcDoc     Spreadsheet document attributes
 	 * @return True when found
 	 */
 	private boolean findDateRow(XEnumeration rowIterator, CalcDoc calcDoc)
@@ -543,20 +537,15 @@ public class OdsAccessor implements MessageBundleProvider {
 			List<XSpreadsheetDocument> docList = getSpreadsheetDocs();
 
 			switch (docList.size()) {
-			case 0:
-				// No open spreadsheet documents found.
-				writeFormatted("NWSYNC05");
-				break;
-
-			case 1:
-				// found one => use it
-				this.calcDoc = new CalcDoc(docList.get(0), this);
-				break;
-
-			default:
-				// Found %d open spreadsheet documents. Can only work with one.
-				writeFormatted("NWSYNC04", docList.size());
-				break;
+				case 0 ->
+						// No open spreadsheet documents found.
+						writeFormatted("NWSYNC05");
+				case 1 ->
+						// found one => use it
+						this.calcDoc = new CalcDoc(docList.get(0), this);
+				default ->
+						// Found %d open spreadsheet documents. Can only work with one.
+						writeFormatted("NWSYNC04", docList.size());
 			}
 		}
 
@@ -630,23 +619,23 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end getOfficeDesktop()
 
 	/**
-	 * @param zInterface
-	 * @param iterator
+	 * @param zInterface The type to return
+	 * @param iterator   The iterator to use
 	 * @return The next zInterface from the iterator
 	 */
 	private static <T> T next(Class<T> zInterface, XEnumeration iterator) throws MduException {
-		T rslt;
+		T result;
 		try {
-			rslt = queryInterface(zInterface, iterator.nextElement());
+			result = queryInterface(zInterface, iterator.nextElement());
 		} catch (Exception e) {
 			throw new MduException(e, "Exception iterating to next %s.",
 				zInterface.getSimpleName());
 		}
-		if (rslt == null)
+		if (result == null)
 			throw new MduException(null, "Unable to obtain next %s.",
 				zInterface.getSimpleName());
 
-		return rslt;
+		return result;
 	} // end next(Class<T>, XEnumeration)
 
 	/**
@@ -722,7 +711,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end retrieveMessage(String)
 
 	/**
-	 * @param key The resource bundle key (or message)
+	 * @param key    The resource bundle key (or message)
 	 * @param params Optional array of parameters for the message
 	 */
 	private void writeFormatted(String key, Object... params) {
@@ -731,8 +720,8 @@ public class OdsAccessor implements MessageBundleProvider {
 	} // end writeFormatted(String, Object...)
 
 	/**
-	 * @param cause Exception that caused this (null if none)
-	 * @param key The resource bundle key (or message)
+	 * @param cause  Exception that caused this (null if none)
+	 * @param key    The resource bundle key (or message)
 	 * @param params Optional parameters for the detail message
 	 * @return An exception with the supplied data
 	 */

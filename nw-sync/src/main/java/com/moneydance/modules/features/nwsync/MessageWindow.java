@@ -25,13 +25,15 @@ import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 
+import com.leastlogic.moneydance.util.StagedInterface;
 import com.leastlogic.swing.util.HTMLPane;
 
 public class MessageWindow extends JFrame implements ActionListener {
-	private AutoCloseable closeableResource = null;
 	private final Main feature;
 	private JButton btnCommit;
 	private HTMLPane pnOutputLog;
+	private StagedInterface staged = null;
+	private AutoCloseable closeableResource = null;
 
 	static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages"; //$NON-NLS-1$
 	private static final ResourceBundle msgBundle = ResourceBundle.getBundle(baseMessageBundleName);
@@ -122,8 +124,19 @@ public class MessageWindow extends JFrame implements ActionListener {
 	public void actionPerformed(ActionEvent event) {
 		Object source = event.getSource();
 
-		if (source == this.btnCommit && this.feature != null) {
-			this.feature.commitChanges();
+		if (source == this.btnCommit && this.staged != null) {
+			try {
+				String changeSummary = this.staged.commitChanges();
+
+				if (changeSummary != null) {
+					addText(changeSummary);
+				}
+				enableCommitButton(this.staged.isModified());
+			} catch (Exception e) {
+				addText(e.toString());
+				enableCommitButton(false);
+				e.printStackTrace(System.err);
+			}
 		}
 
 	} // end actionPerformed(ActionEvent)
@@ -152,6 +165,21 @@ public class MessageWindow extends JFrame implements ActionListener {
 
 	} // end enableCommitButton(boolean)
 
+	/**
+	 * Store the object to manage staged changes.
+	 *
+	 * @param staged The object managing staged changes
+	 */
+	public void setStaged(StagedInterface staged) {
+		this.staged = staged;
+
+	} // end setStaged(StagedInterface)
+
+	/**
+	 * Store the object with resources to close.
+	 *
+	 * @param closable The object managing closeable resources
+	 */
 	public void setCloseableResource(AutoCloseable closable) {
 		this.closeableResource = closable;
 

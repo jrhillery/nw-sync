@@ -49,25 +49,6 @@ public class Main extends FeatureModule {
 
 	} // end invoke(String)
 
-	/**
-	 * This is called when the commit button is selected.
-	 */
-	void commitChanges() {
-		try {
-			String commitText;
-			synchronized (this) {
-				commitText = this.odsAcc.commitChanges();
-			}
-
-			if (commitText != null)
-				this.messageWindow.addText(commitText);
-			this.messageWindow.enableCommitButton(this.odsAcc.isModified());
-		} catch (Throwable e) {
-			handleException(e);
-		}
-
-	} // end commitChanges()
-
 	private void handleException(Throwable e) {
 		this.messageWindow.addText(e.toString());
 		this.messageWindow.enableCommitButton(false);

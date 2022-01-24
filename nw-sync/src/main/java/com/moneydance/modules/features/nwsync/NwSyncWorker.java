@@ -13,10 +13,6 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
       this.odsAcc = odsAcc;
    } // end constructor
 
-   public void registerClosableResource(AutoCloseable closable) {
-      this.syncWindow.setCloseableResource(closable);
-   } // end registerClosableResource(AutoCloseable)
-
    /**
     * Long-running routine to synchronize Moneydance with a spreadsheet.
     * Runs on worker thread.
@@ -26,6 +22,8 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
    protected Boolean doInBackground() {
       try {
          this.odsAcc.forgetChanges();
+         this.syncWindow.setStaged(this.odsAcc);
+         this.syncWindow.setCloseableResource(this.odsAcc);
          this.odsAcc.syncNwData(this);
 
          return this.odsAcc.isModified();

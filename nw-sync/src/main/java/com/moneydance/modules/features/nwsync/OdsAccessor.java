@@ -32,6 +32,7 @@ import com.infinitekind.moneydance.model.CurrencyType;
 import com.leastlogic.moneydance.util.MdUtil;
 import com.leastlogic.moneydance.util.MduException;
 import com.leastlogic.moneydance.util.SnapshotList;
+import com.leastlogic.moneydance.util.StagedInterface;
 import com.leastlogic.swing.util.HTMLPane;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.bridge.XBridge;
@@ -54,7 +55,7 @@ import ooo.connector.server.OOoServer;
  * Provides read/write access to an ods (OpenOffice/LibreOffice) spreadsheet
  * document.
  */
-public class OdsAccessor implements MessageBundleProvider, AutoCloseable {
+public class OdsAccessor implements MessageBundleProvider, StagedInterface, AutoCloseable {
 	private final Locale locale;
 	private final Account root;
 	private final CurrencyTable securities;
@@ -95,7 +96,6 @@ public class OdsAccessor implements MessageBundleProvider, AutoCloseable {
 	 */
 	public void syncNwData(NwSyncWorker syncWorker) throws MduException {
 		this.syncWorker = syncWorker;
-		syncWorker.registerClosableResource(this);
 		CalcDoc calcDoc = getCalcDoc();
 
 		if (calcDoc != null && calcDoc.getSheets() == null) {
@@ -490,6 +490,8 @@ public class OdsAccessor implements MessageBundleProvider, AutoCloseable {
 
 	/**
 	 * Commit any changes to the spreadsheet document.
+	 *
+	 * @return A summary of the changes committed
 	 */
 	public String commitChanges() {
 		String commitText = null;
@@ -672,6 +674,7 @@ public class OdsAccessor implements MessageBundleProvider, AutoCloseable {
 					queryInterface(XComponent.class, bridge).dispose();
 				}
 			}
+			// Office connection closed.
 		} catch (Throwable e) {
 			System.err.println("Exception disposing office process connection bridge:");
 			e.printStackTrace(System.err);

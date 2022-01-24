@@ -28,6 +28,7 @@ import javax.swing.border.EmptyBorder;
 import com.leastlogic.swing.util.HTMLPane;
 
 public class MessageWindow extends JFrame implements ActionListener {
+	private AutoCloseable closeableResource = null;
 	private final Main feature;
 	private JButton btnCommit;
 	private HTMLPane pnOutputLog;
@@ -151,6 +152,11 @@ public class MessageWindow extends JFrame implements ActionListener {
 
 	} // end enableCommitButton(boolean)
 
+	public void setCloseableResource(AutoCloseable closable) {
+		this.closeableResource = closable;
+
+	} // end setCloseableResource(AutoCloseable)
+
 	/**
 	 * Processes events on this window.
 	 *
@@ -180,6 +186,15 @@ public class MessageWindow extends JFrame implements ActionListener {
 			getTitle(), winSize.getWidth(), winSize.getHeight());
 		setVisible(false);
 		dispose();
+
+		if (this.closeableResource != null) {
+			// Release any resources we acquired.
+			try {
+				this.closeableResource.close();
+			} catch (Exception e) {
+				e.printStackTrace(System.err);
+			}
+		}
 
 		return null;
 	} // end goAway()

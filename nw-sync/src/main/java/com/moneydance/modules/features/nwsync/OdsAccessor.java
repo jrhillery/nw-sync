@@ -54,7 +54,7 @@ import ooo.connector.server.OOoServer;
  * Provides read/write access to an ods (OpenOffice/LibreOffice) spreadsheet
  * document.
  */
-public class OdsAccessor implements MessageBundleProvider {
+public class OdsAccessor implements MessageBundleProvider, AutoCloseable {
 	private final Locale locale;
 	private final Account root;
 	private final CurrencyTable securities;
@@ -95,6 +95,7 @@ public class OdsAccessor implements MessageBundleProvider {
 	 */
 	public void syncNwData(NwSyncWorker syncWorker) throws MduException {
 		this.syncWorker = syncWorker;
+		syncWorker.registerClosableResource(this);
 		CalcDoc calcDoc = getCalcDoc();
 
 		if (calcDoc != null && calcDoc.getSheets() == null) {
@@ -648,14 +649,12 @@ public class OdsAccessor implements MessageBundleProvider {
 	/**
 	 * Release any resources we acquired. This includes closing the connection to
 	 * the office process.
-	 *
-	 * @return null
 	 */
-	public OdsAccessor releaseResources() {
+	public void close() {
 		closeOfficeConnection();
+		this.calcDoc = null;
 
-		return null;
-	} // end releaseResources()
+	} // end close()
 
 	/**
 	 * Close our connection to the office process.

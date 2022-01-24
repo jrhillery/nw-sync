@@ -107,9 +107,6 @@ public class Main extends FeatureModule {
 		if (this.messageWindow != null)
 			this.messageWindow = this.messageWindow.goAway();
 
-		if (this.odsAcc != null)
-			this.odsAcc = this.odsAcc.releaseResources();
-
 	} // end closeConsole()
 
 } // end class Main

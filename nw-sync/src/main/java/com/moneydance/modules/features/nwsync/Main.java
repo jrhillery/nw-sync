@@ -54,9 +54,13 @@ public class Main extends FeatureModule {
 	 */
 	void commitChanges() {
 		try {
+			String commitText;
 			synchronized (this.synchObj) {
-				this.odsAcc.commitChanges();
+				commitText = this.odsAcc.commitChanges();
 			}
+
+			if (commitText != null)
+				this.messageWindow.addText(commitText);
 			this.messageWindow.enableCommitButton(this.odsAcc.isModified());
 		} catch (Throwable e) {
 			handleException(e);

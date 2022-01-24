@@ -487,7 +487,9 @@ public class OdsAccessor implements MessageBundleProvider {
 	/**
 	 * Commit any changes to the spreadsheet document.
 	 */
-	public void commitChanges() {
+	public String commitChanges() {
+		String commitText = null;
+
 		if (isModified()) {
 			this.calcDoc.commitChanges();
 			String msgKey;
@@ -499,12 +501,14 @@ public class OdsAccessor implements MessageBundleProvider {
 				// Changed %d security price%s, %d account balance%s and %d dates.
 				msgKey = "NWSYNC18";
 			}
-			writeFormatted(msgKey, this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
-				this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s", this.numDatesSet);
+			commitText = String.format(this.locale, retrieveMessage(msgKey),
+					this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
+					this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s", this.numDatesSet);
 		}
 
 		forgetChanges();
 
+		return commitText;
 	} // end commitChanges()
 
 	/**

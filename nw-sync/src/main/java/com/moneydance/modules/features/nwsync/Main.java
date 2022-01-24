@@ -11,7 +11,6 @@ import com.moneydance.apps.md.controller.FeatureModule;
 public class Main extends FeatureModule {
 	private MessageWindow messageWindow = null;
 	private OdsAccessor odsAcc = null;
-	private final Object synchObj = new Object();
 
 	/**
 	 * Register this module to be invoked via the Extensions menu.
@@ -33,16 +32,17 @@ public class Main extends FeatureModule {
 		showConsole();
 
 		if (this.odsAcc == null) {
-			this.odsAcc = new OdsAccessor(this.messageWindow,
+			this.odsAcc = new OdsAccessor(this.messageWindow.getLocale(),
 				getContext().getCurrentAccountBook());
 		}
 		try {
-			synchronized (this.synchObj) {
+			synchronized (this) {
 				this.messageWindow.clearText();
-				this.odsAcc.forgetChanges();
-				this.odsAcc.syncNwData();
+
+				// SwingWorker instances are not reusable, so make a new one
+				NwSyncWorker worker = new NwSyncWorker(this.messageWindow, this.odsAcc);
+				worker.execute();
 			}
-			this.messageWindow.enableCommitButton(this.odsAcc.isModified());
 		} catch (Throwable e) {
 			handleException(e);
 		}
@@ -55,7 +55,7 @@ public class Main extends FeatureModule {
 	void commitChanges() {
 		try {
 			String commitText;
-			synchronized (this.synchObj) {
+			synchronized (this) {
 				commitText = this.odsAcc.commitChanges();
 			}
 

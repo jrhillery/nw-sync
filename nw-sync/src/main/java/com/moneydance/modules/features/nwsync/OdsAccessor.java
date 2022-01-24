@@ -55,11 +55,11 @@ import ooo.connector.server.OOoServer;
  * document.
  */
 public class OdsAccessor implements MessageBundleProvider {
-	private final MessageWindow messageWindow;
 	private final Locale locale;
 	private final Account root;
 	private final CurrencyTable securities;
 
+	private NwSyncWorker syncWorker = null;
 	private CalcDoc calcDoc = null;
 	private XCellRange dateRow = null;
 	private int latestColumn = 0;
@@ -78,21 +78,23 @@ public class OdsAccessor implements MessageBundleProvider {
 	/**
 	 * Sole constructor.
 	 *
-	 * @param messageWindow The nw sync window to use
-	 * @param accountBook   Moneydance account book
+	 * @param locale      Our message window's Locale
+	 * @param accountBook Moneydance account book
 	 */
-	public OdsAccessor(MessageWindow messageWindow, AccountBook accountBook) {
-		this.messageWindow = messageWindow;
-		this.locale = messageWindow.getLocale();
+	public OdsAccessor(Locale locale, AccountBook accountBook) {
+		this.locale = locale;
 		this.root = accountBook.getRootAccount();
 		this.securities = accountBook.getCurrencies();
 
-	} // end (MessageWindow, AccountBook) constructor
+	} // end constructor
 
 	/**
 	 * Synchronize data between a spreadsheet document and Moneydance.
+	 *
+	 * @param syncWorker The worker we can use to send messages to the event dispatch thread
 	 */
-	public void syncNwData() throws MduException {
+	public void syncNwData(NwSyncWorker syncWorker) throws MduException {
+		this.syncWorker = syncWorker;
 		CalcDoc calcDoc = getCalcDoc();
 
 		if (calcDoc != null && calcDoc.getSheets() == null) {
@@ -144,6 +146,7 @@ public class OdsAccessor implements MessageBundleProvider {
 			// No new price or balance data found.
 			writeFormatted("NWSYNC03");
 		}
+		this.syncWorker = null;
 
 	} // end syncNwData()
 
@@ -719,7 +722,13 @@ public class OdsAccessor implements MessageBundleProvider {
 	 * @param params Optional array of parameters for the message
 	 */
 	private void writeFormatted(String key, Object... params) {
-		this.messageWindow.addText(String.format(this.locale, retrieveMessage(key), params));
+		String msg = String.format(this.locale, retrieveMessage(key), params);
+
+		if (this.syncWorker != null) {
+			this.syncWorker.display(msg);
+		} else {
+			System.err.println(msg);
+		}
 
 	} // end writeFormatted(String, Object...)
 

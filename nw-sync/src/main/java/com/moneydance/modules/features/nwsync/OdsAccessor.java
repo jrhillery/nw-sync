@@ -56,11 +56,11 @@ import ooo.connector.server.OOoServer;
  * document.
  */
 public class OdsAccessor implements MessageBundleProvider, StagedInterface, AutoCloseable {
+	private final NwSyncWorker syncWorker;
 	private final Locale locale;
 	private final Account root;
 	private final CurrencyTable securities;
 
-	private NwSyncWorker syncWorker = null;
 	private CalcDoc calcDoc = null;
 	private XCellRange dateRow = null;
 	private int latestColumn = 0;
@@ -79,10 +79,12 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	/**
 	 * Sole constructor.
 	 *
+	 * @param syncWorker  The worker we can use to send messages to the event dispatch thread
 	 * @param locale      Our message window's Locale
 	 * @param accountBook Moneydance account book
 	 */
-	public OdsAccessor(Locale locale, AccountBook accountBook) {
+	public OdsAccessor(NwSyncWorker syncWorker, Locale locale, AccountBook accountBook) {
+		this.syncWorker = syncWorker;
 		this.locale = locale;
 		this.root = accountBook.getRootAccount();
 		this.securities = accountBook.getCurrencies();
@@ -91,11 +93,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 	/**
 	 * Synchronize data between a spreadsheet document and Moneydance.
-	 *
-	 * @param syncWorker The worker we can use to send messages to the event dispatch thread
 	 */
-	public void syncNwData(NwSyncWorker syncWorker) throws MduException {
-		this.syncWorker = syncWorker;
+	public void syncNwData() throws MduException {
 		CalcDoc calcDoc = getCalcDoc();
 
 		if (calcDoc != null && calcDoc.getSheets() == null) {
@@ -147,7 +146,6 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 			// No new price or balance data found.
 			writeFormatted("NWSYNC03");
 		}
-		this.syncWorker = null;
 
 	} // end syncNwData()
 

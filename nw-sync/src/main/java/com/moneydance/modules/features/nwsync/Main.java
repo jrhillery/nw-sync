@@ -10,7 +10,6 @@ import com.moneydance.apps.md.controller.FeatureModule;
  */
 public class Main extends FeatureModule {
 	private MessageWindow messageWindow = null;
-	private OdsAccessor odsAcc = null;
 
 	/**
 	 * Register this module to be invoked via the Extensions menu.
@@ -31,18 +30,12 @@ public class Main extends FeatureModule {
 		System.err.println(getName() + " invoked with uri [" + uri + ']');
 		showConsole();
 
-		if (this.odsAcc == null) {
-			this.odsAcc = new OdsAccessor(this.messageWindow.getLocale(),
-				getContext().getCurrentAccountBook());
-		}
 		try {
-			synchronized (this) {
-				this.messageWindow.clearText();
+			this.messageWindow.clearText();
 
-				// SwingWorker instances are not reusable, so make a new one
-				NwSyncWorker worker = new NwSyncWorker(this.messageWindow, this.odsAcc);
-				worker.execute();
-			}
+			// SwingWorker instances are not reusable, so make a new one
+			NwSyncWorker worker = new NwSyncWorker(this.messageWindow, getContext());
+			worker.execute();
 		} catch (Throwable e) {
 			handleException(e);
 		}

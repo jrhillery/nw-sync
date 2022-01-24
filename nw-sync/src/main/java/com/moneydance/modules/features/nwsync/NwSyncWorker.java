@@ -1,16 +1,19 @@
 package com.moneydance.modules.features.nwsync;
 
+import com.infinitekind.moneydance.model.AccountBook;
+import com.moneydance.apps.md.controller.FeatureModuleContext;
+
 import javax.swing.SwingWorker;
 import java.util.List;
 
 public class NwSyncWorker extends SwingWorker<Boolean, String> {
    private final MessageWindow syncWindow;
-   private final OdsAccessor odsAcc;
+   private final AccountBook accountBook;
 
-   public NwSyncWorker(MessageWindow syncWindow, OdsAccessor odsAcc) {
+   public NwSyncWorker(MessageWindow syncWindow, FeatureModuleContext fmContext) {
       super();
       this.syncWindow = syncWindow;
-      this.odsAcc = odsAcc;
+      this.accountBook = fmContext.getCurrentAccountBook();
    } // end constructor
 
    /**
@@ -21,12 +24,13 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
     */
    protected Boolean doInBackground() {
       try {
-         this.odsAcc.forgetChanges();
-         this.syncWindow.setStaged(this.odsAcc);
-         this.syncWindow.setCloseableResource(this.odsAcc);
-         this.odsAcc.syncNwData(this);
+         OdsAccessor odsAcc = new OdsAccessor(this,
+               this.syncWindow.getLocale(), this.accountBook);
+         this.syncWindow.setStaged(odsAcc);
+         this.syncWindow.setCloseableResource(odsAcc);
+         odsAcc.syncNwData();
 
-         return this.odsAcc.isModified();
+         return odsAcc.isModified();
       } catch (Throwable e) {
          display(e.toString());
          e.printStackTrace(System.err);

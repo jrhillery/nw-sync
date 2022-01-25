@@ -11,7 +11,7 @@ import java.util.concurrent.ExecutionException;
 import static javax.swing.SwingWorker.StateValue.DONE;
 
 public class NwSyncWorker extends SwingWorker<Boolean, String> {
-   private final MessageWindow syncWindow;
+   private final NwSyncConsole syncConsole;
    private final OdsAccessor odsAcc;
    private final CountDownLatch finishedLatch = new CountDownLatch(1);
 
@@ -21,9 +21,9 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
     * @param syncConsole Our NW sync console
     * @param fmContext  Moneydance context
     */
-   public NwSyncWorker(MessageWindow syncConsole, FeatureModuleContext fmContext) {
+   public NwSyncWorker(NwSyncConsole syncConsole, FeatureModuleContext fmContext) {
       super();
-      this.syncWindow = syncConsole;
+      this.syncConsole = syncConsole;
       this.odsAcc = new OdsAccessor(this,
          syncConsole.getLocale(), fmContext.getCurrentAccountBook());
    } // end constructor
@@ -36,8 +36,8 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
     */
    protected Boolean doInBackground() {
       try {
-         this.syncWindow.setStaged(this.odsAcc);
-         this.syncWindow.setCloseableResource(this.odsAcc);
+         this.syncConsole.setStaged(this.odsAcc);
+         this.syncConsole.setCloseableResource(this.odsAcc);
          this.odsAcc.syncNwData();
 
          return this.odsAcc.isModified();
@@ -57,11 +57,11 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
     */
    protected void done() {
       try {
-         this.syncWindow.enableCommitButton(get());
+         this.syncConsole.enableCommitButton(get());
       } catch (CancellationException e) {
          // ignore
       } catch (Exception e) {
-         this.syncWindow.addText(e.toString());
+         this.syncConsole.addText(e.toString());
          e.printStackTrace(System.err);
       }
    } // end done()
@@ -83,7 +83,7 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
    protected void process(List<String> chunks) {
       if (!isCancelled()) {
          for (String msg: chunks) {
-            this.syncWindow.addText(msg);
+            this.syncConsole.addText(msg);
          }
       }
    } // end process(List<String>)
@@ -95,7 +95,7 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
     */
    public void stopExecute(String name) {
       if (getState() != DONE) {
-         System.err.format(this.syncWindow.getLocale(),
+         System.err.format(this.syncConsole.getLocale(),
             "Cancelling prior %s invocation.%n", name);
          cancel(false);
 

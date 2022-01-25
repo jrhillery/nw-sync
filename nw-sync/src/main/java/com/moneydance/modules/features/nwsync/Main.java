@@ -9,7 +9,7 @@ import com.moneydance.apps.md.controller.FeatureModule;
  * Module used to synchronize John's NW spreadsheet document with Moneydance.
  */
 public class Main extends FeatureModule {
-	private MessageWindow messageWindow = null;
+	private NwSyncConsole syncConsole = null;
 	private NwSyncWorker syncWorker = null;
 
 	/**
@@ -35,10 +35,10 @@ public class Main extends FeatureModule {
 			if (this.syncWorker != null) {
 				this.syncWorker.stopExecute(getName());
 			}
-			this.messageWindow.clearText();
+			this.syncConsole.clearText();
 
 			// SwingWorker instances are not reusable, so make a new one
-			this.syncWorker = new NwSyncWorker(this.messageWindow, getContext());
+			this.syncWorker = new NwSyncWorker(this.syncConsole, getContext());
 			this.syncWorker.execute();
 		} catch (Throwable e) {
 			handleException(e);
@@ -47,8 +47,8 @@ public class Main extends FeatureModule {
 	} // end invoke(String)
 
 	private void handleException(Throwable e) {
-		this.messageWindow.addText(e.toString());
-		this.messageWindow.enableCommitButton(false);
+		this.syncConsole.addText(e.toString());
+		this.syncConsole.enableCommitButton(false);
 		e.printStackTrace(System.err);
 
 	} // end handleException(Throwable)
@@ -67,13 +67,13 @@ public class Main extends FeatureModule {
 	 * Show our console window.
 	 */
 	private synchronized void showConsole() {
-		if (this.messageWindow == null) {
-			this.messageWindow = new MessageWindow(this);
-			this.messageWindow.setVisible(true);
+		if (this.syncConsole == null) {
+			this.syncConsole = new NwSyncConsole(this);
+			this.syncConsole.setVisible(true);
 		} else {
-			this.messageWindow.setVisible(true);
-			this.messageWindow.toFront();
-			this.messageWindow.requestFocus();
+			this.syncConsole.setVisible(true);
+			this.syncConsole.toFront();
+			this.syncConsole.requestFocus();
 		}
 
 	} // end showConsole()
@@ -82,8 +82,8 @@ public class Main extends FeatureModule {
 	 * Close our console window and release resources.
 	 */
 	synchronized void closeConsole() {
-		if (this.messageWindow != null)
-			this.messageWindow = this.messageWindow.goAway();
+		if (this.syncConsole != null)
+			this.syncConsole = this.syncConsole.goAway();
 
 	} // end closeConsole()
 

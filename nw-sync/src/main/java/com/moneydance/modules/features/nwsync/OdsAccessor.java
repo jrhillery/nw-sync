@@ -699,7 +699,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 */
 	private ResourceBundle getMsgBundle() {
 		if (this.msgBundle == null) {
-			this.msgBundle = MdUtil.getMsgBundle(MessageWindow.baseMessageBundleName,
+			this.msgBundle = MdUtil.getMsgBundle(NwSyncConsole.baseMessageBundleName,
 				this.locale);
 		}
 

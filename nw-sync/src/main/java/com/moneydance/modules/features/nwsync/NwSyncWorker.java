@@ -1,19 +1,31 @@
 package com.moneydance.modules.features.nwsync;
 
-import com.infinitekind.moneydance.model.AccountBook;
 import com.moneydance.apps.md.controller.FeatureModuleContext;
 
 import javax.swing.SwingWorker;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+
+import static javax.swing.SwingWorker.StateValue.DONE;
 
 public class NwSyncWorker extends SwingWorker<Boolean, String> {
    private final MessageWindow syncWindow;
-   private final AccountBook accountBook;
+   private final OdsAccessor odsAcc;
+   private final CountDownLatch finishedLatch = new CountDownLatch(1);
 
-   public NwSyncWorker(MessageWindow syncWindow, FeatureModuleContext fmContext) {
+   /**
+    * Sole constructor.
+    *
+    * @param syncConsole Our NW sync console
+    * @param fmContext  Moneydance context
+    */
+   public NwSyncWorker(MessageWindow syncConsole, FeatureModuleContext fmContext) {
       super();
-      this.syncWindow = syncWindow;
-      this.accountBook = fmContext.getCurrentAccountBook();
+      this.syncWindow = syncConsole;
+      this.odsAcc = new OdsAccessor(this,
+         syncConsole.getLocale(), fmContext.getCurrentAccountBook());
    } // end constructor
 
    /**
@@ -24,18 +36,18 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
     */
    protected Boolean doInBackground() {
       try {
-         OdsAccessor odsAcc = new OdsAccessor(this,
-               this.syncWindow.getLocale(), this.accountBook);
-         this.syncWindow.setStaged(odsAcc);
-         this.syncWindow.setCloseableResource(odsAcc);
-         odsAcc.syncNwData();
+         this.syncWindow.setStaged(this.odsAcc);
+         this.syncWindow.setCloseableResource(this.odsAcc);
+         this.odsAcc.syncNwData();
 
-         return odsAcc.isModified();
+         return this.odsAcc.isModified();
       } catch (Throwable e) {
          display(e.toString());
          e.printStackTrace(System.err);
 
          return false;
+      } finally {
+         this.finishedLatch.countDown();
       }
    } // end doInBackground()
 
@@ -46,6 +58,8 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
    protected void done() {
       try {
          this.syncWindow.enableCommitButton(get());
+      } catch (CancellationException e) {
+         // ignore
       } catch (Exception e) {
          this.syncWindow.addText(e.toString());
          e.printStackTrace(System.err);
@@ -67,9 +81,39 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
     * @param chunks Messages to process
     */
    protected void process(List<String> chunks) {
-      for (String msg: chunks) {
-         this.syncWindow.addText(msg);
+      if (!isCancelled()) {
+         for (String msg: chunks) {
+            this.syncWindow.addText(msg);
+         }
       }
    } // end process(List<String>)
+
+   /**
+    * Stop a running execution.
+    *
+    * @param name This extension's name
+    */
+   public void stopExecute(String name) {
+      if (getState() != DONE) {
+         System.err.format(this.syncWindow.getLocale(),
+            "Cancelling prior %s invocation.%n", name);
+         cancel(false);
+
+         // wait for prior worker to complete
+         try {
+            this.finishedLatch.await();
+         } catch (InterruptedException e) {
+            // ignore
+         }
+
+         // discard results and select exceptions
+         try {
+            get();
+         } catch (CancellationException | InterruptedException | ExecutionException e) {
+            // ignore
+         }
+      }
+      this.odsAcc.close();
+   } // end stopExecute(String)
 
 } // end class NwSyncWorker

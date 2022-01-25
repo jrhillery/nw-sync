@@ -139,6 +139,9 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 					}
 				}
 			}
+
+			if (this.syncWorker.isCancelled())
+				return;
 		} // end while
 		analyzeSecurityDates();
 

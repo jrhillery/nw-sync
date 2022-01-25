@@ -10,6 +10,7 @@ import com.moneydance.apps.md.controller.FeatureModule;
  */
 public class Main extends FeatureModule {
 	private MessageWindow messageWindow = null;
+	private NwSyncWorker syncWorker = null;
 
 	/**
 	 * Register this module to be invoked via the Extensions menu.
@@ -27,15 +28,18 @@ public class Main extends FeatureModule {
 	 * @see com.moneydance.apps.md.controller.FeatureModule#invoke(java.lang.String)
 	 */
 	public void invoke(String uri) {
-		System.err.println(getName() + " invoked with uri [" + uri + ']');
+		System.err.format("%s invoked with uri [%s].%n", getName(), uri);
 		showConsole();
 
 		try {
+			if (this.syncWorker != null) {
+				this.syncWorker.stopExecute(getName());
+			}
 			this.messageWindow.clearText();
 
 			// SwingWorker instances are not reusable, so make a new one
-			NwSyncWorker worker = new NwSyncWorker(this.messageWindow, getContext());
-			worker.execute();
+			this.syncWorker = new NwSyncWorker(this.messageWindow, getContext());
+			this.syncWorker.execute();
 		} catch (Throwable e) {
 			handleException(e);
 		}

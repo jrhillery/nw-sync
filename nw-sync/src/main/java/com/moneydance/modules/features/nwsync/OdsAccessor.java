@@ -134,7 +134,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 							setTodaysBalIfDiff(val, account, keyVal);
 							setEarlierBalsIfDiff(row, account, keyVal);
 						} else {
-							System.err.println("Ignoring row " + keyVal);
+							System.err.format(this.locale, "Ignoring row %s.%n", keyVal);
 						}
 					}
 				}

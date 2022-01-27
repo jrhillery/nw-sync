@@ -3,32 +3,21 @@
  */
 package com.moneydance.modules.features.nwsync;
 
-import static javax.swing.GroupLayout.DEFAULT_SIZE;
+import com.leastlogic.moneydance.util.StagedInterface;
+import com.leastlogic.swing.util.HTMLPane;
 
-import java.awt.AWTEvent;
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import javax.swing.*;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.io.Serial;
 import java.util.ResourceBundle;
 
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.JButton;
-import javax.swing.JComponent;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.LayoutStyle.ComponentPlacement;
-import javax.swing.WindowConstants;
-import javax.swing.border.EmptyBorder;
+import static javax.swing.GroupLayout.DEFAULT_SIZE;
 
-import com.leastlogic.moneydance.util.StagedInterface;
-import com.leastlogic.swing.util.HTMLPane;
-
-public class NwSyncConsole extends JFrame implements ActionListener {
+public class NwSyncConsole extends JFrame {
 	private final Main feature;
 	private JButton btnCommit;
 	private HTMLPane pnOutputLog;
@@ -104,7 +93,22 @@ public class NwSyncConsole extends JFrame implements ActionListener {
 	 * Wire in our event listeners.
 	 */
 	private void wireEvents() {
-		this.btnCommit.addActionListener(this);
+		this.btnCommit.addActionListener(event -> {
+			// invoked when Commit is selected
+			if (this.staged != null) {
+				try {
+					String changeSummary = this.staged.commitChanges();
+
+					if (changeSummary != null)
+						addText(changeSummary);
+					enableCommitButton(this.staged.isModified());
+				} catch (Exception e) {
+					addText(e.toString());
+					enableCommitButton(false);
+					e.printStackTrace(System.err);
+				}
+			}
+		}); // end btnCommit.addActionListener
 
 	} // end wireEvents()
 
@@ -115,31 +119,6 @@ public class NwSyncConsole extends JFrame implements ActionListener {
 		setIconImage(HTMLPane.readResourceImage("update-icon24.png", getClass())); //$NON-NLS-1$
 
 	} // end readIconImage()
-
-	/**
-	 * Invoked when an action occurs.
-	 *
-	 * @param event The event to be processed
-	 */
-	public void actionPerformed(ActionEvent event) {
-		Object source = event.getSource();
-
-		if (source == this.btnCommit && this.staged != null) {
-			try {
-				String changeSummary = this.staged.commitChanges();
-
-				if (changeSummary != null) {
-					addText(changeSummary);
-				}
-				enableCommitButton(this.staged.isModified());
-			} catch (Exception e) {
-				addText(e.toString());
-				enableCommitButton(false);
-				e.printStackTrace(System.err);
-			}
-		}
-
-	} // end actionPerformed(ActionEvent)
 
 	/**
 	 * @param text HTML-text to append to the output log text area
@@ -235,6 +214,7 @@ public class NwSyncConsole extends JFrame implements ActionListener {
 			try {
 				NwSyncConsole frame = new NwSyncConsole(null);
 				frame.setVisible(true);
+				frame.enableCommitButton(true);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

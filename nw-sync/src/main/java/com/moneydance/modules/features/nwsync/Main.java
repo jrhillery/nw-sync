@@ -8,7 +8,8 @@ import com.moneydance.apps.md.controller.FeatureModule;
 /**
  * Module used to synchronize John's NW spreadsheet document with Moneydance.
  */
-public class Main extends FeatureModule {
+@SuppressWarnings("unused")
+public class Main extends FeatureModule implements AutoCloseable {
 	private NwSyncConsole syncConsole = null;
 	private NwSyncWorker syncWorker = null;
 
@@ -29,16 +30,16 @@ public class Main extends FeatureModule {
 	 */
 	public void invoke(String uri) {
 		System.err.format("%s invoked with uri [%s].%n", getName(), uri);
-		showConsole();
 
 		try {
 			if (this.syncWorker != null) {
-				this.syncWorker.stopExecute(getName());
+				this.syncWorker.stopExecute();
 			}
+			showConsole();
 			this.syncConsole.clearText();
 
 			// SwingWorker instances are not reusable, so make a new one
-			this.syncWorker = new NwSyncWorker(this.syncConsole, getContext());
+			this.syncWorker = new NwSyncWorker(this.syncConsole, getName(), getContext());
 			this.syncWorker.execute();
 		} catch (Throwable e) {
 			handleException(e);
@@ -53,8 +54,15 @@ public class Main extends FeatureModule {
 
 	} // end handleException(Throwable)
 
-	public void cleanup() {
-		closeConsole();
+	/**
+	 * Stop execution, close our console window and release resources.
+	 */
+	public synchronized void cleanup() {
+		if (this.syncConsole != null)
+			this.syncConsole = this.syncConsole.goAway();
+
+		if (this.syncWorker != null)
+			this.syncWorker = this.syncWorker.stopExecute();
 
 	} // end cleanup()
 
@@ -68,7 +76,8 @@ public class Main extends FeatureModule {
 	 */
 	private synchronized void showConsole() {
 		if (this.syncConsole == null) {
-			this.syncConsole = new NwSyncConsole(this);
+			this.syncConsole = new NwSyncConsole(getName());
+			this.syncConsole.addCloseableResource(this);
 			this.syncConsole.setVisible(true);
 		} else {
 			this.syncConsole.setVisible(true);
@@ -79,12 +88,12 @@ public class Main extends FeatureModule {
 	} // end showConsole()
 
 	/**
-	 * Close our console window and release resources.
+	 * Closes this resource, relinquishing any underlying resources.
 	 */
-	synchronized void closeConsole() {
-		if (this.syncConsole != null)
-			this.syncConsole = this.syncConsole.goAway();
+	public void close() {
+		this.syncConsole = null;
+		this.syncWorker = null;
 
-	} // end closeConsole()
+	} // end close()
 
 } // end class Main

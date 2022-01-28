@@ -675,7 +675,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 					queryInterface(XComponent.class, bridge).dispose();
 				}
 			}
-			// Office connection closed.
+			System.err.println("Office connection closed.");
 		} catch (Throwable e) {
 			System.err.println("Exception disposing office process connection bridge:");
 			e.printStackTrace(System.err);

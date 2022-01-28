@@ -10,22 +10,28 @@ import java.util.concurrent.ExecutionException;
 
 import static javax.swing.SwingWorker.StateValue.DONE;
 
-public class NwSyncWorker extends SwingWorker<Boolean, String> {
+public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCloseable {
    private final NwSyncConsole syncConsole;
+   private final String extensionName;
    private final OdsAccessor odsAcc;
    private final CountDownLatch finishedLatch = new CountDownLatch(1);
 
    /**
     * Sole constructor.
     *
-    * @param syncConsole Our NW sync console
-    * @param fmContext  Moneydance context
+    * @param syncConsole   Our NW sync console
+    * @param extensionName This extension's name
+    * @param fmContext     Moneydance context
     */
-   public NwSyncWorker(NwSyncConsole syncConsole, FeatureModuleContext fmContext) {
+   public NwSyncWorker(NwSyncConsole syncConsole, String extensionName,
+                       FeatureModuleContext fmContext) {
       super();
       this.syncConsole = syncConsole;
+      this.extensionName = extensionName;
       this.odsAcc = new OdsAccessor(this,
          syncConsole.getLocale(), fmContext.getCurrentAccountBook());
+      syncConsole.setStaged(this.odsAcc);
+      syncConsole.addCloseableResource(this);
    } // end constructor
 
    /**
@@ -36,8 +42,6 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
     */
    protected Boolean doInBackground() {
       try {
-         this.syncConsole.setStaged(this.odsAcc);
-         this.syncConsole.setCloseableResource(this.odsAcc);
          this.odsAcc.syncNwData();
 
          return this.odsAcc.isModified();
@@ -91,29 +95,43 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> {
    /**
     * Stop a running execution.
     *
-    * @param name This extension's name
+    * @return null
     */
-   public void stopExecute(String name) {
-      if (getState() != DONE) {
-         System.err.format(this.syncConsole.getLocale(),
-            "Cancelling prior %s invocation.%n", name);
-         cancel(false);
+   public NwSyncWorker stopExecute() {
+      close();
 
-         // wait for prior worker to complete
-         try {
-            this.finishedLatch.await();
-         } catch (InterruptedException e) {
-            // ignore
-         }
+      // we no longer need closing
+      this.syncConsole.removeCloseableResource(this);
 
-         // discard results and select exceptions
-         try {
-            get();
-         } catch (CancellationException | InterruptedException | ExecutionException e) {
-            // ignore
-         }
-      }
-      this.odsAcc.close();
+      return null;
    } // end stopExecute(String)
+
+   /**
+    * Closes this resource, relinquishing any underlying resources.
+    * Cancel this worker, wait for it to complete, discard its results and close odsAcc.
+    */
+   public void close() {
+      try (this.odsAcc) { // make sure we close odsAcc
+         if (getState() != DONE) {
+            System.err.format(this.syncConsole.getLocale(),
+               "Cancelling running %s invocation.%n", this.extensionName);
+            cancel(false);
+
+            // wait for prior worker to complete
+            try {
+               this.finishedLatch.await();
+            } catch (InterruptedException e) {
+               // ignore
+            }
+
+            // discard results and some exceptions
+            try {
+               get();
+            } catch (CancellationException | InterruptedException | ExecutionException e) {
+               // ignore
+            }
+         }
+      } // end try-with-resources
+   } // end close()
 
 } // end class NwSyncWorker

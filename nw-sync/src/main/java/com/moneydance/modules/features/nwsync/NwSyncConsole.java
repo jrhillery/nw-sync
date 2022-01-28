@@ -13,16 +13,16 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.io.Serial;
+import java.util.LinkedList;
 import java.util.ResourceBundle;
 
 import static javax.swing.GroupLayout.DEFAULT_SIZE;
 
 public class NwSyncConsole extends JFrame {
-	private final Main feature;
 	private JButton btnCommit;
 	private HTMLPane pnOutputLog;
 	private StagedInterface staged = null;
-	private AutoCloseable closeableResource = null;
+	private final LinkedList<AutoCloseable> closeableResources = new LinkedList<>();
 
 	static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages"; //$NON-NLS-1$
 	private static final ResourceBundle msgBundle = ResourceBundle.getBundle(baseMessageBundleName);
@@ -32,12 +32,11 @@ public class NwSyncConsole extends JFrame {
 	/**
 	 * Create the frame.
 	 *
-	 * @param feature Our main class
+	 * @param extName This extension's name
 	 */
-	public NwSyncConsole(Main feature) {
-		super((feature == null ? msgBundle.getString("NwSyncConsole.window.title.default") //$NON-NLS-1$
-			: feature.getName()) + msgBundle.getString("NwSyncConsole.window.title.suffix")); //$NON-NLS-1$
-		this.feature = feature;
+	public NwSyncConsole(String extName) {
+		super((extName == null ? msgBundle.getString("NwSyncConsole.window.title.default") //$NON-NLS-1$
+			: extName) + msgBundle.getString("NwSyncConsole.window.title.suffix")); //$NON-NLS-1$
 
 		initComponents();
 		wireEvents();
@@ -155,14 +154,24 @@ public class NwSyncConsole extends JFrame {
 	} // end setStaged(StagedInterface)
 
 	/**
-	 * Store the object with resources to close.
+	 * Store an object with resources to close.
 	 *
-	 * @param closable The object managing closeable resources
+	 * @param closeable The object managing closeable resources
 	 */
-	public void setCloseableResource(AutoCloseable closable) {
-		this.closeableResource = closable;
+	public void addCloseableResource(AutoCloseable closeable) {
+		this.closeableResources.addFirst(closeable);
 
-	} // end setCloseableResource(AutoCloseable)
+	} // end addCloseableResource(AutoCloseable)
+
+	/**
+	 * Remove an object that no longer has resources to close.
+	 *
+	 * @param closeable The object without closeable resources
+	 */
+	public void removeCloseableResource(AutoCloseable closeable) {
+		this.closeableResources.remove(closeable);
+
+	} // end removeCloseableResource(AutoCloseable)
 
 	/**
 	 * Processes events on this window.
@@ -171,11 +180,7 @@ public class NwSyncConsole extends JFrame {
 	 */
 	protected void processEvent(AWTEvent event) {
 		if (event.getID() == WindowEvent.WINDOW_CLOSING) {
-			if (this.feature != null) {
-				this.feature.closeConsole();
-			} else {
-				goAway();
-			}
+			goAway();
 		} else {
 			super.processEvent(event);
 		}
@@ -194,10 +199,10 @@ public class NwSyncConsole extends JFrame {
 		setVisible(false);
 		dispose();
 
-		if (this.closeableResource != null) {
+		while (!this.closeableResources.isEmpty()) {
 			// Release any resources we acquired.
 			try {
-				this.closeableResource.close();
+				this.closeableResources.removeFirst().close();
 			} catch (Exception e) {
 				e.printStackTrace(System.err);
 			}

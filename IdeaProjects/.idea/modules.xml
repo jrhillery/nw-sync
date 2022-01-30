@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/IdeaProjects.iml" filepath="$PROJECT_DIR$/.idea/IdeaProjects.iml" />
       <module fileurl="file://$PROJECT_DIR$/bootstrap-connector.iml" filepath="$PROJECT_DIR$/bootstrap-connector.iml" />
       <module fileurl="file://$PROJECT_DIR$/md-util.iml" filepath="$PROJECT_DIR$/md-util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/more-decimal.iml" filepath="$PROJECT_DIR$/more-decimal.iml" />
       <module fileurl="file://$PROJECT_DIR$/nw-sync.iml" filepath="$PROJECT_DIR$/nw-sync.iml" />
       <module fileurl="file://$PROJECT_DIR$/swing-util.iml" filepath="$PROJECT_DIR$/swing-util.iml" />
     </modules>

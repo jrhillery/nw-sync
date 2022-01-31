@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="EclipseModuleManager">
+    <libelement value="file:///moneydance-devkit-5.1/lib/extadmin.jar" />
+    <libelement value="file:///moneydance-devkit-5.1/lib/moneydance-dev.jar" />
+    <src_description expected_position="0">
+      <src_folder value="file://$MODULE_DIR$/../../mdimport/yq-import/src/main/java" expected_position="0" />
+      <src_folder value="file://$MODULE_DIR$/../../mdimport/yq-import/src/main/resources" expected_position="1" />
+    </src_description>
+  </component>
+  <component name="NewModuleRootManager">
+    <output url="file://$MODULE_DIR$/../../mdimport/yq-import/bin" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../mdimport/yq-import">
+      <sourceFolder url="file://$MODULE_DIR$/../../mdimport/yq-import/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../mdimport/yq-import/src/main/resources" type="java-resource" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="module" module-name="md-util" />
+    <orderEntry type="module" module-name="swing-util" />
+    <orderEntry type="module" module-name="import-util" />
+    <orderEntry type="library" name="moneydance-devkit-5.1" level="application" />
+  </component>
+</module>

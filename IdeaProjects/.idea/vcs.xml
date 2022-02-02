@@ -6,6 +6,7 @@
     </option>
   </component>
   <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/../../fwlookup" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../mdimport" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../mdutil" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../modify" vcs="Git" />

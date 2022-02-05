@@ -18,5 +18,16 @@
     <orderEntry type="module" module-name="md-util" />
     <orderEntry type="library" name="selenium-java-3.141" level="application" />
     <orderEntry type="library" name="moneydance-devkit-5.1" level="application" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://C:/Program Files/Moneydance/lib/moneydance.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://C:/Program Files/Moneydance/lib/moneydance.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
   </component>
 </module>

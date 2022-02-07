@@ -13,7 +13,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.io.Serial;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.ResourceBundle;
 
 import static javax.swing.GroupLayout.DEFAULT_SIZE;
@@ -22,7 +22,7 @@ public class NwSyncConsole extends JFrame {
 	private JButton btnCommit;
 	private HTMLPane pnOutputLog;
 	private StagedInterface staged = null;
-	private final LinkedList<AutoCloseable> closeableResources = new LinkedList<>();
+	private final ArrayDeque<AutoCloseable> closeableResources = new ArrayDeque<>();
 
 	static final String baseMessageBundleName = "com.moneydance.modules.features.nwsync.NwSyncMessages"; //$NON-NLS-1$
 	private static final ResourceBundle msgBundle = ResourceBundle.getBundle(baseMessageBundleName);

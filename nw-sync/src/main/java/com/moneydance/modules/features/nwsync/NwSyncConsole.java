@@ -49,7 +49,7 @@ public class NwSyncConsole extends JFrame {
 	 */
 	private void initComponents() {
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		setSize(696, 430);
+		setSize(705, 436);
 		JPanel contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);

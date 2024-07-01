@@ -42,7 +42,7 @@ public class NwSyncConsole extends JFrame {
 		wireEvents();
 		readIconImage();
 
-	} // end (Main) constructor
+	} // end (String) constructor
 
 	/**
 	 * Initialize the swing components.
@@ -221,7 +221,7 @@ public class NwSyncConsole extends JFrame {
 				frame.setVisible(true);
 				frame.enableCommitButton(true);
 			} catch (Exception e) {
-				e.printStackTrace();
+				e.printStackTrace(System.out);
 			}
 		});
 

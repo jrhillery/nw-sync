@@ -175,7 +175,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		CurrencyType security = snapshotList.getSecurity();
 		CurrencySnapshot latestSnapshot = snapshotList.getLatestSnapshot();
 
-		if (latestSnapshot != null) {
+		if (latestSnapshot != null
+				&& !MdUtil.isIBondTickerPrefix(security.getTickerSymbol())) {
 			// add this snapshot to our collection
 			getSecurityListForDate(latestSnapshot.getDateInt())
 				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
@@ -553,7 +554,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 						writeFormatted("NWSYNC05");
 				case 1 ->
 						// found one => use it
-						this.calcDoc = new CalcDoc(docList.get(0), this);
+						this.calcDoc = new CalcDoc(docList.getFirst(), this);
 				default ->
 						// Found %d open spreadsheet documents. Can only work with one.
 						writeFormatted("NWSYNC04", docList.size());

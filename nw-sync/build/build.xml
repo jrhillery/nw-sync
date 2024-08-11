@@ -20,8 +20,8 @@ http://jakarta.apache.org/ant/index.html
   <property name="optimize" value="off"/>
 
   <path id="libreoffice.lib">
-    <pathelement path="${libreoffice.api}/libreoffice.jar"/>
-    <pathelement path="${libreoffice.api}/unoloader.jar"/>
+    <pathelement location="${libreoffice.api}/libreoffice.jar"/>
+    <pathelement location="${libreoffice.api}/unoloader.jar"/>
   </path>
 
   <path id="classpath">
@@ -38,8 +38,8 @@ http://jakarta.apache.org/ant/index.html
     <javac debug="${debug}" optimize="${optimize}"
       classpathref="classpath" destdir="${build}">
         <src path="${src}/src/main/java"/>
-        <src path="${swingutil}/src/main/java"/>
         <src path="${mdutil}/src/main/java"/>
+        <src path="${swingutil}/src/main/java"/>
         <src path="${bootconnector}/src/main/java"/>
     </javac>
 

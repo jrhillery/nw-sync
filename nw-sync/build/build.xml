@@ -7,6 +7,7 @@ http://jakarta.apache.org/ant/index.html
   <property name="src" value=".."/>
   <property name="build" value="."/>
   <property name="moneydance.devkit" value="${user.home}/Documents/Prog/moneydance-devkit-5.1"/>
+  <property name="moneydance.runtime" value="/Program Files/Moneydance"/>
   <property name="mdutil" value="${src}/../../mdutil/md-util"/>
   <property name="swingutil" value="${src}/../../mdutil/swing-util"/>
   <property name="libreoffice.api" value="C:/Program Files/LibreOffice/program/classes"/>
@@ -25,6 +26,7 @@ http://jakarta.apache.org/ant/index.html
   </path>
 
   <path id="classpath">
+    <pathelement location="${moneydance.runtime}/lib/gson-2.10.1.jar"/>
     <pathelement location="${moneydance.devkit}/lib/extadmin.jar"/>
     <pathelement location="${moneydance.devkit}/lib/moneydance-dev.jar"/>
     <path refid="libreoffice.lib"/>

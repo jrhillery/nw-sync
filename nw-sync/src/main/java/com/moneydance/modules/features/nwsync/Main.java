@@ -76,7 +76,8 @@ public class Main extends FeatureModule implements AutoCloseable {
 	 */
 	private synchronized void showConsole() {
 		if (this.syncConsole == null) {
-			this.syncConsole = new NwSyncConsole(getName());
+			this.syncConsole = new NwSyncConsole(getName(),
+				getContext().getCurrentAccountBook().getLocalStorage());
 			this.syncConsole.addCloseableResource(this);
 			this.syncConsole.setVisible(true);
 		} else {

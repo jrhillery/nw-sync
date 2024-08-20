@@ -3,7 +3,9 @@
  */
 package com.moneydance.modules.features.nwsync;
 
+import com.leastlogic.moneydance.util.MdStorageUtil;
 import com.leastlogic.moneydance.util.StagedInterface;
+import com.leastlogic.swing.util.AwtScreenUtil;
 import com.leastlogic.swing.util.HTMLPane;
 
 import javax.swing.*;
@@ -14,13 +16,16 @@ import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.io.Serial;
 import java.util.ArrayDeque;
+import java.util.Map;
 import java.util.ResourceBundle;
 
 import static javax.swing.GroupLayout.DEFAULT_SIZE;
 
 public class NwSyncConsole extends JFrame {
+	private final MdStorageUtil mdStorage;
 	private JButton btnCommit;
 	private HTMLPane pnOutputLog;
+	private final AwtScreenUtil screenUtil = new AwtScreenUtil(this);
 	private StagedInterface staged = null;
 	private final ArrayDeque<AutoCloseable> closeableResources = new ArrayDeque<>();
 
@@ -33,23 +38,25 @@ public class NwSyncConsole extends JFrame {
 	 * Create the frame.
 	 *
 	 * @param extName This extension's name
+	 * @param storage Moneydance local storage
 	 */
-	public NwSyncConsole(String extName) {
+	public NwSyncConsole(String extName, Map<String, String> storage) {
 		super((extName == null ? msgBundle.getString("NwSyncConsole.window.title.default") //$NON-NLS-1$
 			: extName) + msgBundle.getString("NwSyncConsole.window.title.suffix")); //$NON-NLS-1$
 
+		this.mdStorage = new MdStorageUtil("nw-sync", storage);
 		initComponents();
 		wireEvents();
 		readIconImage();
 
-	} // end (String) constructor
+	} // end constructor
 
 	/**
-	 * Initialize the swing components.
+	 * Initialize swing components.
 	 */
 	private void initComponents() {
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		setSize(705, 436);
+		this.screenUtil.setWindowCoordinates(this.mdStorage, 705, 436);
 		JPanel contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -193,9 +200,7 @@ public class NwSyncConsole extends JFrame {
 	 * @return null
 	 */
 	public NwSyncConsole goAway() {
-		Dimension winSize = getSize();
-		System.err.format(getLocale(), "Closing %s with width=%.0f, height=%.0f.%n",
-			getTitle(), winSize.getWidth(), winSize.getHeight());
+		this.screenUtil.persistWindowCoordinates(this.mdStorage);
 		setVisible(false);
 		dispose();
 
@@ -210,21 +215,5 @@ public class NwSyncConsole extends JFrame {
 
 		return null;
 	} // end goAway()
-
-	/**
-	 * Launch the application.
-	 */
-	public static void main(String[] args) {
-		EventQueue.invokeLater(() -> {
-			try {
-				NwSyncConsole frame = new NwSyncConsole(null);
-				frame.setVisible(true);
-				frame.enableCommitButton(true);
-			} catch (Exception e) {
-				e.printStackTrace(System.out);
-			}
-		});
-
-	} // end main(String[])
 
 } // end class NwSyncConsole

@@ -169,21 +169,21 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 	/**
 	 * @param snapshotList The list of snapshots to use
-	 * @return The price in the last snapshot supplied
+	 * @return Today's price in the snapshot list supplied
 	 */
-	private BigDecimal getLatestPrice(SnapshotList snapshotList) {
+	private BigDecimal getTodaysPrice(SnapshotList snapshotList) {
 		CurrencyType security = snapshotList.getSecurity();
-		CurrencySnapshot latestSnapshot = snapshotList.getLatestSnapshot();
+		CurrencySnapshot currentSnapshot = snapshotList.getTodaysSnapshot();
 
-		if (latestSnapshot != null
+		if (currentSnapshot != null
 				&& !MdUtil.isIBondTickerPrefix(security.getTickerSymbol())) {
 			// add this snapshot to our collection
-			getSecurityListForDate(latestSnapshot.getDateInt())
+			getSecurityListForDate(currentSnapshot.getDateInt())
 				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
 		}
 
-		return MdUtil.validateCurrentUserRate(security, latestSnapshot);
-	} // end getLatestPrice(SnapshotList)
+		return MdUtil.validateCurrentUserRate(security, currentSnapshot);
+	} // end getTodaysPrice(SnapshotList)
 
 	/**
 	 * @param snapshotList The list of snapshots to use
@@ -301,7 +301,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 */
 	private void setTodaysPriceIfDiff(CellHandler val, SnapshotList snapshotList)
 			throws MduException {
-		BigDecimal price = getLatestPrice(snapshotList);
+		BigDecimal price = getTodaysPrice(snapshotList);
 		setPriceIfDiff(val, price, snapshotList.getSecurity(), "today");
 
 	} // end setTodaysPriceIfDiff(CellHandler, SnapshotList)

@@ -163,9 +163,7 @@ public class CalcDoc {
 	 * Commit any changes to the spreadsheet document.
 	 */
 	public void commitChanges() {
-		for (CellHandler cHandler : this.changes) {
-			cHandler.applyUpdate();
-		}
+		this.changes.forEach(CellHandler::applyUpdate);
 
 	} // end commitChanges()
 

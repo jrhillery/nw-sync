@@ -175,14 +175,18 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		CurrencyType security = snapshotList.getSecurity();
 		CurrencySnapshot currentSnapshot = snapshotList.getTodaysSnapshot();
 
-		if (currentSnapshot != null
-				&& !MdUtil.isIBondTickerPrefix(security.getTickerSymbol())) {
+		if (currentSnapshot == null)
+			return BigDecimal.ONE; // default price to 1 when no snapshot
+
+		if (!MdUtil.isIBondTickerPrefix(security.getTickerSymbol())) {
 			// add this snapshot to our collection
 			getSecurityListForDate(currentSnapshot.getDateInt())
 				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
 		}
+		BigDecimal price = MdUtil.convRateToPrice(currentSnapshot.getRate());
+		MdUtil.validateCurrentUserRate(security, price, currentSnapshot);
 
-		return MdUtil.validateCurrentUserRate(security, currentSnapshot);
+		return price;
 	} // end getTodaysPrice(SnapshotList)
 
 	/**

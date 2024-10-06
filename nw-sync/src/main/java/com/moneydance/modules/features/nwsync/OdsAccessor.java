@@ -6,7 +6,6 @@ package com.moneydance.modules.features.nwsync;
 import static com.sun.star.table.CellContentType.FORMULA;
 import static com.sun.star.table.CellContentType.TEXT;
 import static com.sun.star.uno.UnoRuntime.queryInterface;
-import static java.math.RoundingMode.HALF_EVEN;
 import static java.time.format.FormatStyle.MEDIUM;
 
 import java.math.BigDecimal;
@@ -184,7 +183,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
 		}
 		BigDecimal price = MdUtil.convRateToPrice(currentSnapshot.getRate());
-		MdUtil.validateCurrentUserRate(security, price, currentSnapshot)
+		MdUtil.validateCurrentUserRate(security, price, currentSnapshot, this.locale)
 				.ifPresent(correction -> writeFormatted("NWSYNC00", correction));
 
 		return price;
@@ -304,8 +303,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param val          The cell to potentially change
 	 * @param snapshotList The list of snapshots to use
 	 */
-	private void setTodaysPriceIfDiff(CellHandler val, SnapshotList snapshotList)
-			throws MduException {
+	private void setTodaysPriceIfDiff(CellHandler val, SnapshotList snapshotList) {
 		BigDecimal price = getTodaysPrice(snapshotList);
 		setPriceIfDiff(val, price, snapshotList.getSecurity(), "today");
 
@@ -318,7 +316,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param dayStr   The applicable day
 	 */
 	private void setPriceIfDiff(CellHandler val, BigDecimal price, CurrencyType security,
-			String dayStr) throws MduException {
+			String dayStr) {
 		Number oldVal = val.getValue();
 
 		if (oldVal instanceof Double) {
@@ -326,9 +324,9 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 			if (price.compareTo(oldPrice) != 0) {
 				// Change %s (%s) price for %s from %s to %s (<span class\="%s">%+.2f%%</span>).
-				NumberFormat priceFmt = val.getNumberFormat();
+				NumberFormat priceFmt = MdUtil.getCurrencyFormat(this.locale, oldPrice, price);
 				writeFormatted("NWSYNC10", security.getName(), security.getTickerSymbol(), dayStr,
-					val.getDisplayText(), priceFmt.format(price), HTMLPane.getSpanCl(price, oldPrice),
+					priceFmt.format(oldPrice), priceFmt.format(price), HTMLPane.getSpanCl(price, oldPrice),
 					(price.doubleValue() / oldPrice.doubleValue() - 1) * 100);
 
 				val.setNewValue(price);
@@ -385,8 +383,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		Number oldBalance = val.getValue();
 
 		if (oldBalance instanceof Double) {
-			// compare balance rounded to the tenth place past the decimal point
-			BigDecimal oldBal = BigDecimal.valueOf(oldBalance.doubleValue()).setScale(10, HALF_EVEN);
+			// compare balance rounded to 13 digit precision
+			BigDecimal oldBal = MdUtil.roundPrice(oldBalance.doubleValue());
 
 			if (balance.compareTo(oldBal) != 0) {
 				// Change %s balance for %s from %s to %s.

@@ -184,7 +184,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
 		}
 		BigDecimal price = MdUtil.convRateToPrice(currentSnapshot.getRate());
-		MdUtil.validateCurrentUserRate(security, price, currentSnapshot);
+		MdUtil.validateCurrentUserRate(security, price, currentSnapshot)
+				.ifPresent(correction -> writeFormatted("NWSYNC00", correction));
 
 		return price;
 	} // end getTodaysPrice(SnapshotList)

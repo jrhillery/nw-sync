@@ -205,7 +205,7 @@ public class CalcDoc {
 	 * @param cell The cell to read
 	 * @return The cell's number format properties
 	 */
-	public XPropertySet getNumberFormatProps(XCell cell) throws MduException {
+	public XPropertySet getNumberFormatProps(XCell cell) {
 		XPropertySet cellNumberFormatProps = null;
 		XPropertySet cellProps = queryInterface(XPropertySet.class, cell);
 
@@ -214,8 +214,7 @@ public class CalcDoc {
 				cellNumberFormatProps = this.numberFormats
 					.getByKey((Integer) cellProps.getPropertyValue("NumberFormat"));
 			} catch (Exception e) {
-				// Exception obtaining cell number format.
-				throw asException(e, "NWSYNC46");
+				System.err.format("Exception obtaining cell number format: %s%n", e);
 			}
 		}
 
@@ -226,16 +225,18 @@ public class CalcDoc {
 	 * @param cell The cell to read
 	 * @return The cell's number format type
 	 */
-	private short getNumberFormatType(XCell cell) throws MduException {
+	private short getNumberFormatType(XCell cell) {
 		XPropertySet cellNumberFormatProps = getNumberFormatProps(cell);
+
 		if (cellNumberFormatProps == null)
 			return UNDEFINED;
 
 		try {
 			return (Short) cellNumberFormatProps.getPropertyValue("Type");
 		} catch (Exception e) {
-			// Exception obtaining number format type.
-			throw asException(e, "NWSYNC47");
+			System.err.format("Exception obtaining number format type: %s%n", e);
+
+			return UNDEFINED;
 		}
 	} // end getNumberFormatType(XCell)
 
@@ -244,7 +245,7 @@ public class CalcDoc {
 	 * @param index Zero-based index to use
 	 * @return CellHandler instance for the cell at zero-based index in the supplied row
 	 */
-	public CellHandler getCellHandlerByIndex(XCellRange row, int index) throws MduException {
+	public CellHandler getCellHandlerByIndex(XCellRange row, int index) {
 		XCell cell = getCellByIndex(row, index);
 
 		if (isContentType(cell, VALUE)) {
@@ -265,13 +266,14 @@ public class CalcDoc {
 	 * @param index Zero-based index to use
 	 * @return Cell at zero-based index in the supplied row
 	 */
-	public XCell getCellByIndex(XCellRange row, int index) throws MduException {
+	public XCell getCellByIndex(XCellRange row, int index) {
 		try {
 
 			return row.getCellByPosition(index, 0);
 		} catch (Exception e) {
-			// Exception obtaining cell in row.
-			throw asException(e, "NWSYNC48");
+			System.err.format("Exception obtaining cell in row: %s%n", e);
+
+			return null;
 		}
 	} // end getCellByIndex(XCellRange, int)
 

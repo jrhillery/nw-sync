@@ -10,7 +10,6 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 
 import com.leastlogic.moneydance.util.MdUtil;
-import com.leastlogic.moneydance.util.MduException;
 import com.sun.star.beans.XPropertySet;
 import com.sun.star.sheet.XCellAddressable;
 import com.sun.star.table.CellAddress;
@@ -48,7 +47,7 @@ public abstract class CellHandler {
 
 		} // end setValue(Number)
 
-		public NumberFormat getNumberFormat() throws MduException {
+		public NumberFormat getNumberFormat() {
 			if (this.numberFormat == null) {
 				this.numberFormat = createDecimalFormat();
 			}
@@ -58,16 +57,15 @@ public abstract class CellHandler {
 		/**
 		 * @return A decimal format for this cell
 		 */
-		private NumberFormat createDecimalFormat() throws MduException {
+		private NumberFormat createDecimalFormat() {
 			XPropertySet numberFormatProps = this.calcDoc.getNumberFormatProps(this.cell);
 
 			if (numberFormatProps != null) {
-				String fmtString;
+				String fmtString = null;
 				try {
 					fmtString = (String) numberFormatProps.getPropertyValue("FormatString");
 				} catch (Exception e) {
-					throw new MduException(e,
-						"Exception obtaining number format string in cell %s.", this);
+					System.err.format("Exception obtaining number format in cell %s: %s%n", this, e);
 				}
 				if (fmtString != null && !fmtString.equals("General")) {
 					// isolate the positive subpattern
@@ -161,7 +159,7 @@ public abstract class CellHandler {
 	/**
 	 * @return A formatter for values in this cell
 	 */
-	public abstract NumberFormat getNumberFormat() throws MduException;
+	public abstract NumberFormat getNumberFormat();
 
 	/**
 	 * @return The text displayed in this cell

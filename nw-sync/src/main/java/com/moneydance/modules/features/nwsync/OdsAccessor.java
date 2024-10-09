@@ -343,8 +343,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param row          The row with cells to potentially change
 	 * @param snapshotList The list of snapshots to use
 	 */
-	private void setEarlierPricesIfDiff(XCellRange row, SnapshotList snapshotList)
-			throws MduException {
+	private void setEarlierPricesIfDiff(XCellRange row, SnapshotList snapshotList) {
 		BigDecimal[] prices = getPricesAsOfDates(snapshotList, this.earlierDates);
 
 		for (int i = 0; i < prices.length; ++i) {
@@ -366,8 +365,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param account The corresponding Moneydance account
 	 * @param keyVal  The spreadsheet name of this account
 	 */
-	private void setTodaysBalIfDiff(CellHandler val, Account account, String keyVal)
-			throws MduException {
+	private void setTodaysBalIfDiff(CellHandler val, Account account, String keyVal) {
 		BigDecimal balance = MdUtil.getCurrentBalance(account);
 		setBalanceIfDiff(val, balance, keyVal, "today");
 
@@ -380,7 +378,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param dayStr  The applicable day
 	 */
 	private void setBalanceIfDiff(CellHandler val, BigDecimal balance, String keyVal,
-			String dayStr) throws MduException {
+			String dayStr) {
 		Number oldBalance = val.getValue();
 
 		if (oldBalance instanceof Double) {
@@ -406,8 +404,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param account The corresponding Moneydance account
 	 * @param keyVal  The spreadsheet name of this account
 	 */
-	private void setEarlierBalsIfDiff(XCellRange row, Account account, String keyVal)
-			throws MduException {
+	private void setEarlierBalsIfDiff(XCellRange row, Account account, String keyVal) {
 		BigDecimal[] balances = MdUtil.getBalancesAsOfDates(this.root.getBook(), account,
 			this.earlierDates);
 

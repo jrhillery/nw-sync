@@ -12,16 +12,8 @@ import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.ResourceBundle;
-import java.util.TreeMap;
 
 import com.infinitekind.moneydance.model.Account;
 import com.infinitekind.moneydance.model.AccountBook;
@@ -126,15 +118,12 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 						setTodaysPriceIfDiff(val, ssList);
 						setEarlierPricesIfDiff(row, ssList);
 					} else {
-						Account account = getAccount(keyVal);
-
-						if (account != null) {
+						getAccount(keyVal).ifPresentOrElse(account -> {
 							// found this row's account in Moneydance
 							setTodaysBalIfDiff(val, account, keyVal);
 							setEarlierBalsIfDiff(row, account, keyVal);
-						} else {
-							System.err.format(this.locale, "Ignoring row %s.%n", keyVal);
-						}
+						}, () ->
+							System.err.format(this.locale, "Ignoring row %s.%n", keyVal));
 					}
 				}
 			}
@@ -155,12 +144,12 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param keyVal Account name:sub-account name
 	 * @return The Moneydance account corresponding to keyVal
 	 */
-	private Account getAccount(String keyVal) {
+	private Optional<Account> getAccount(String keyVal) {
 		final String[] actNames = keyVal.split(":");
-		Account account = this.root.getAccountByName(actNames[0]);
+		Optional<Account> account = Optional.ofNullable(this.root.getAccountByName(actNames[0]));
 
-		if (account != null && actNames.length > 1) {
-			account = MdUtil.getSubAccountByName(account, actNames[1]);
+		if (account.isPresent() && actNames.length > 1) {
+			account = MdUtil.getSubAccountByName(account.get(), actNames[1]);
 		}
 
 		return account;

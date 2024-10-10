@@ -375,9 +375,12 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 			BigDecimal oldBal = MdUtil.roundPrice(oldBalance.doubleValue());
 
 			if (balance.compareTo(oldBal) != 0) {
+				NumberFormat nf = val.isCurrency()
+					? MdUtil.getCurrencyFormat(this.locale, oldBal, balance)
+					: MdUtil.getNumberFormat(this.locale, oldBal, balance);
+
 				// Change %s balance for %s from %s to %s.
-				writeFormatted("NWSYNC11", keyVal, dayStr, val.getDisplayText(),
-					val.getNumberFormat().format(balance));
+				writeFormatted("NWSYNC11", keyVal, dayStr, nf.format(oldBal), nf.format(balance));
 
 				val.setNewValue(balance);
 				++this.numBalancesSet;

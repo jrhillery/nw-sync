@@ -5,12 +5,9 @@ package com.moneydance.modules.features.nwsync;
 
 import static com.sun.star.uno.UnoRuntime.queryInterface;
 
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.time.LocalDate;
 
 import com.leastlogic.moneydance.util.MdUtil;
-import com.sun.star.beans.XPropertySet;
 import com.sun.star.sheet.XCellAddressable;
 import com.sun.star.table.CellAddress;
 import com.sun.star.table.XCell;
@@ -25,10 +22,13 @@ public abstract class CellHandler {
 	 * Provide read and write access to floating point spreadsheet cells.
 	 */
 	public static class FloatCellHandler extends CellHandler {
-		public FloatCellHandler(XCell cell, CalcDoc calcDoc) {
-			super(cell, calcDoc);
+		private final boolean isCurrency;
 
-		} // end (XCell, CalcDoc) constructor
+		public FloatCellHandler(XCell cell, CalcDoc calcDoc, boolean isCurrency) {
+			super(cell, calcDoc);
+			this.isCurrency = isCurrency;
+
+		} // end constructor
 
 		/**
 		 * @return The numeric value of this cell as a Double
@@ -47,40 +47,12 @@ public abstract class CellHandler {
 
 		} // end setValue(Number)
 
-		public NumberFormat getNumberFormat() {
-			if (this.numberFormat == null) {
-				this.numberFormat = createDecimalFormat();
-			}
-			return this.numberFormat;
-		} // end getNumberFormat()
-
 		/**
-		 * @return A decimal format for this cell
+		 * @return true when this cell's number format type is currency
 		 */
-		private NumberFormat createDecimalFormat() {
-			XPropertySet numberFormatProps = this.calcDoc.getNumberFormatProps(this.cell);
-
-			if (numberFormatProps != null) {
-				String fmtString = null;
-				try {
-					fmtString = (String) numberFormatProps.getPropertyValue("FormatString");
-				} catch (Exception e) {
-					System.err.format("Exception obtaining number format in cell %s: %s%n", this, e);
-				}
-				if (fmtString != null && !fmtString.equals("General")) {
-					// isolate the positive subpattern
-					String[] patternParts = fmtString.split(";");
-					// transform any currency symbols
-					String pattern = patternParts[0].replace("[$$-409]", "$");
-					DecimalFormat df = new DecimalFormat();
-					df.applyLocalizedPattern(pattern);
-
-					return df;
-				}
-			}
-
-			return NumberFormat.getNumberInstance();
-		} // end createDecimalFormat()
+		public boolean isCurrency() {
+			return this.isCurrency;
+		} // end isCurrency()
 
 	} // end class FloatCellHandler
 
@@ -120,18 +92,17 @@ public abstract class CellHandler {
 
 		} // end setValue(Number)
 
-		public NumberFormat getNumberFormat() {
-			if (this.numberFormat == null) {
-				this.numberFormat = NumberFormat.getIntegerInstance();
-			}
-			return this.numberFormat;
-		} // end getNumberFormat()
+		/**
+		 * @return false since this is a date cell
+		 */
+		public boolean isCurrency() {
+			return false;
+		} // end isCurrency()
 
 	} // end class DateCellHandler
 
 	protected XCell cell;
 	protected CalcDoc calcDoc;
-	protected NumberFormat numberFormat = null;
 	private Number newValue = null;
 
 	/**
@@ -157,17 +128,9 @@ public abstract class CellHandler {
 	public abstract void setValue(Number value);
 
 	/**
-	 * @return A formatter for values in this cell
+	 * @return true when this cell's number format type is currency
 	 */
-	public abstract NumberFormat getNumberFormat();
-
-	/**
-	 * @return The text displayed in this cell
-	 */
-	public String getDisplayText() {
-
-		return asDisplayText(this.cell);
-	} // end getDisplayText()
+	public abstract boolean isCurrency();
 
 	/**
 	 * @param newValue New value to save for later application
@@ -190,7 +153,7 @@ public abstract class CellHandler {
 	 * @return A string representation of this CellHandler
 	 */
 	public String toString() {
-		StringBuilder sb = new StringBuilder(getDisplayText());
+		StringBuilder sb = new StringBuilder(asDisplayText(this.cell));
 		XCellAddressable addressable = queryInterface(XCellAddressable.class, this.cell);
 		CellAddress cellAdr = addressable == null ? null : addressable.getCellAddress();
 

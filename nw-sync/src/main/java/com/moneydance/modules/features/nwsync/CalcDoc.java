@@ -5,6 +5,7 @@ package com.moneydance.modules.features.nwsync;
 
 import static com.sun.star.table.CellContentType.VALUE;
 import static com.sun.star.uno.UnoRuntime.queryInterface;
+import static com.sun.star.util.NumberFormat.CURRENCY;
 import static com.sun.star.util.NumberFormat.DATE;
 import static com.sun.star.util.NumberFormat.PERCENT;
 import static com.sun.star.util.NumberFormat.UNDEFINED;
@@ -255,7 +256,7 @@ public class CalcDoc {
 				? null
 				: (numberFormatType & DATE) != 0
 				? new DateCellHandler(cell, this)
-				: new FloatCellHandler(cell, this);
+				: new FloatCellHandler(cell, this, (numberFormatType & CURRENCY) != 0);
 		}
 
 		return null;

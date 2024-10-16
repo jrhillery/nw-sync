@@ -171,12 +171,9 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 			getSecurityListForDate(currentSnapshot.get().getDateInt())
 				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
 		}
-		double rate = currentSnapshot.get().getRate();
-		BigDecimal price = MdUtil.convRateToPrice(rate);
-		MdUtil.validateCurrentUserRate(security, price, rate, this.locale)
-				.ifPresent(correction -> writeFormatted("NWSYNC00", correction));
 
-		return price;
+		return MdUtil.getAndValidateCurrentSnapshotPrice(security, currentSnapshot.get(),
+				this.locale, correction -> writeFormatted("NWSYNC00", correction));
 	} // end getTodaysPrice(SnapshotList)
 
 	/**

@@ -161,17 +161,17 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 */
 	private BigDecimal getTodaysPrice(SnapshotList snapshotList) {
 		CurrencyType security = snapshotList.getSecurity();
-		CurrencySnapshot currentSnapshot = snapshotList.getTodaysSnapshot();
+		Optional<CurrencySnapshot> currentSnapshot = snapshotList.getTodaysSnapshot();
 
-		if (currentSnapshot == null)
+		if (currentSnapshot.isEmpty())
 			return BigDecimal.ONE; // default price to 1 when no snapshot
 
 		if (!MdUtil.isIBondTickerPrefix(security.getTickerSymbol())) {
 			// add this snapshot to our collection
-			getSecurityListForDate(currentSnapshot.getDateInt())
+			getSecurityListForDate(currentSnapshot.get().getDateInt())
 				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
 		}
-		double rate = currentSnapshot.getRate();
+		double rate = currentSnapshot.get().getRate();
 		BigDecimal price = MdUtil.convRateToPrice(rate);
 		MdUtil.validateCurrentUserRate(security, price, rate, this.locale)
 				.ifPresent(correction -> writeFormatted("NWSYNC00", correction));
@@ -188,9 +188,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		BigDecimal[] prices = new BigDecimal[asOfDates.length];
 
 		for (int i = prices.length - 1; i >= 0; --i) {
-			CurrencySnapshot snapshot = snapshotList.getSnapshotForDate(asOfDates[i]);
-			prices[i] = snapshot == null ? BigDecimal.ONE
-					: MdUtil.convRateToPrice(snapshot.getRate());
+            prices[i] = snapshotList.getSnapshotForDate(asOfDates[i])
+					.map(SnapshotList::getPrice).orElse(BigDecimal.ONE);
 		} // end for
 
 		return prices;

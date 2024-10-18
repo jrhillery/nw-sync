@@ -90,12 +90,12 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 		if (calcDoc != null && calcDoc.getSheets() == null) {
 			// can't access the sheets, force a reconnection
-			this.calcDoc = null;
 			calcDoc = getCalcDoc();
 		}
 		if (calcDoc == null)
 			return; // nothing to synchronize
 
+		this.calcDoc = calcDoc;
 		XEnumeration rowItr = calcDoc.getFirstSheetRowIterator();
 
 		if (!findDateRow(rowItr, calcDoc) || !findLatestDate())
@@ -205,7 +205,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	/**
 	 * Analyze security dates to see if they are all the same.
 	 */
-	private void analyzeSecurityDates() throws MduException {
+	private void analyzeSecurityDates() {
 		Iterator<Entry<LocalDate, List<String>>> snapshotsIterator =
 			this.securitySnapshots.entrySet().iterator();
 
@@ -234,8 +234,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param marketDate     The date these securities were updated
 	 * @param daysSecurities The list of security names updated on market date
 	 */
-	private void reportOneOfMultipleDates(LocalDate marketDate, List<String> daysSecurities)
-			throws MduException {
+	private void reportOneOfMultipleDates(LocalDate marketDate, List<String> daysSecurities) {
 		// The following security prices were last updated on %s: %s
 		writeFormatted("NWSYNC17", marketDate.format(dateFmt), daysSecurities);
 		LocalDate oldDate = this.latestDateCell.getDateValue();
@@ -251,7 +250,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	/**
 	 * @param marketDate The new date to use
 	 */
-	private void setDateIfDiff(LocalDate marketDate) throws MduException {
+	private void setDateIfDiff(LocalDate marketDate) {
 		LocalDate oldDate = this.latestDateCell.getDateValue();
 
 		if (!marketDate.equals(oldDate)) {
@@ -274,11 +273,11 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param marketDate The new date to use
 	 * @param oldDate    The date from the spreadsheet
 	 */
-	private void handleNewMonth(LocalDate marketDate, LocalDate oldDate) throws MduException {
+	private void handleNewMonth(LocalDate marketDate, LocalDate oldDate) {
 		// A new month column is needed to change date from %s to %s.
 		writeFormatted("NWSYNC16", oldDate.format(dateFmt), marketDate.format(dateFmt));
 
-		getCalcDoc().forgetChanges();
+		this.calcDoc.forgetChanges();
 
 	} // end handleNewMonth(LocalDate, LocalDate)
 
@@ -429,7 +428,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		} // end while
 
 		// Unable to find row with 'Date' in first column in %s.
-		writeFormatted("NWSYNC01", getCalcDoc());
+		writeFormatted("NWSYNC01", this.calcDoc);
 
 		return false;
 	} // end findDateRow(XEnumeration)
@@ -440,7 +439,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 *
 	 * @return True when found
 	 */
-	private boolean findLatestDate() throws MduException {
+	private boolean findLatestDate() {
 		int cellIndex = 0;
 		CellHandler c = null;
 		ArrayList<LocalDate> dates = new ArrayList<>();
@@ -452,12 +451,12 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 			if (this.latestDateCell != null) {
 				dates.add(this.latestDateCell.getDateValue());
 			}
-			c = getCalcDoc().getCellHandlerByIndex(this.dateRow, ++cellIndex);
+			c = this.calcDoc.getCellHandlerByIndex(this.dateRow, ++cellIndex);
 		} while (c instanceof DateCellHandler);
 
 		if (cellIndex == 1) {
 			// Unable to find any dates in the row with 'Date' in first column in %s.
-			writeFormatted("NWSYNC02", getCalcDoc());
+			writeFormatted("NWSYNC02", this.calcDoc);
 
 			return false;
 		}
@@ -474,7 +473,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 		// Found date [%s] in %s.
 		writeFormatted("NWSYNC13", this.latestDateCell.getDateValue().format(dateFmt),
-			getCalcDoc());
+			this.calcDoc);
 
 		return true;
 	} // end findLatestDate()
@@ -534,23 +533,22 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @return The currently open spreadsheet document
 	 */
 	private CalcDoc getCalcDoc() throws MduException {
-		if (this.calcDoc == null) {
-			List<XSpreadsheetDocument> docList = getSpreadsheetDocs();
+		CalcDoc calcDoc = null;
+		List<XSpreadsheetDocument> docList = getSpreadsheetDocs();
 
-			switch (docList.size()) {
-				case 0 ->
-						// No open spreadsheet documents found.
-						writeFormatted("NWSYNC05");
-				case 1 ->
-						// found one => use it
-						this.calcDoc = new CalcDoc(docList.getFirst(), this);
-				default ->
-						// Found %d open spreadsheet documents. Can only work with one.
-						writeFormatted("NWSYNC04", docList.size());
-			}
+		switch (docList.size()) {
+			case 0 ->
+					// No open spreadsheet documents found.
+					writeFormatted("NWSYNC05");
+			case 1 ->
+					// found one => use it
+					calcDoc = new CalcDoc(docList.getFirst(), this);
+			default ->
+					// Found %d open spreadsheet documents. Can only work with one.
+					writeFormatted("NWSYNC04", docList.size());
 		}
 
-		return this.calcDoc;
+		return calcDoc;
 	} // end getCalcDoc()
 
 	/**

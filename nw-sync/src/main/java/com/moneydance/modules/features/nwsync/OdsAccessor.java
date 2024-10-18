@@ -185,7 +185,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		BigDecimal[] prices = new BigDecimal[asOfDates.length];
 
 		for (int i = prices.length - 1; i >= 0; --i) {
-            prices[i] = snapshotList.getSnapshotForDate(asOfDates[i])
+			prices[i] = snapshotList.getSnapshotForDate(asOfDates[i])
 					.map(SnapshotList::getPrice).orElse(BigDecimal.ONE);
 		} // end for
 
@@ -482,10 +482,10 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	/**
 	 * Commit any changes to the spreadsheet document.
 	 *
-	 * @return A summary of the changes committed
+	 * @return Optional summary of the changes committed
 	 */
-	public String commitChanges() {
-		String commitText = null;
+	public Optional<String> commitChanges() {
+		Optional<String> commitText = Optional.empty();
 
 		if (isModified()) {
 			this.calcDoc.commitChanges();
@@ -498,9 +498,9 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 				// Changed %d security price%s, %d account balance%s and %d dates.
 				msgKey = "NWSYNC18";
 			}
-			commitText = String.format(this.locale, retrieveMessage(msgKey),
+			commitText = Optional.of(String.format(this.locale, retrieveMessage(msgKey),
 					this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
-					this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s", this.numDatesSet);
+					this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s", this.numDatesSet));
 		}
 
 		forgetChanges();

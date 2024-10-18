@@ -13,7 +13,6 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.Map.Entry;
 
 import com.infinitekind.moneydance.model.Account;
 import com.infinitekind.moneydance.model.AccountBook;
@@ -60,7 +59,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	private int numPricesSet = 0;
 	private int numBalancesSet = 0;
 	private int numDatesSet = 0;
-	private final Map<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
+	private final TreeMap<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
 	private Properties nwSyncProps = null;
 	private ResourceBundle msgBundle = null;
 
@@ -206,27 +205,15 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * Analyze security dates to see if they are all the same.
 	 */
 	private void analyzeSecurityDates() {
-		Iterator<Entry<LocalDate, List<String>>> snapshotsIterator =
-			this.securitySnapshots.entrySet().iterator();
-
-		if (snapshotsIterator.hasNext()) {
-			Entry<LocalDate, List<String>> snapshotsEntry = snapshotsIterator.next();
-			LocalDate marketDate = snapshotsEntry.getKey();
-
-			if (!snapshotsIterator.hasNext()) {
+		this.securitySnapshots.forEach((marketDate, daysSecurities) -> {
+			if (this.securitySnapshots.size() == 1) {
 				// must be a single date => use it
 				setDateIfDiff(marketDate);
 			} else {
 				// have multiple latest dates for security prices
-				reportOneOfMultipleDates(marketDate, snapshotsEntry.getValue());
-
-				while (snapshotsIterator.hasNext()) {
-					snapshotsEntry = snapshotsIterator.next();
-					marketDate = snapshotsEntry.getKey();
-					reportOneOfMultipleDates(marketDate, snapshotsEntry.getValue());
-				} // end while
+				reportOneOfMultipleDates(marketDate, daysSecurities);
 			}
-		}
+		}); // end for each date
 
 	} // end analyzeSecurityDates()
 

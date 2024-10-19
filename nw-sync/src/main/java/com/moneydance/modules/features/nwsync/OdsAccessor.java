@@ -85,28 +85,23 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * Synchronize data between a spreadsheet document and Moneydance.
 	 */
 	public void syncNwData() throws MduException {
-		CalcDoc calcDoc = getCalcDoc();
+		loadCalcDoc();
 
-		if (calcDoc != null && calcDoc.getSheets() == null) {
-			// can't access the sheets, force a reconnection
-			calcDoc = getCalcDoc();
-		}
-		if (calcDoc == null)
+		if (this.calcDoc == null)
 			return; // nothing to synchronize
 
-		this.calcDoc = calcDoc;
-		XEnumeration rowItr = calcDoc.getFirstSheetRowIterator();
+		XEnumeration rowItr = this.calcDoc.getFirstSheetRowIterator();
 
-		if (!findDateRow(rowItr, calcDoc) || !findLatestDate())
+		if (!findDateRow(rowItr) || !findLatestDate())
 			return; // can't synchronize without a date row and latest date
 
 		while (rowItr.hasMoreElements()) {
 			XCellRange row = next(XCellRange.class, rowItr); // get next row
-			XCell key = calcDoc.getCellByIndex(row, 0); // get its first column
+			XCell key = this.calcDoc.getCellByIndex(row, 0); // get its first column
 
 			if (CalcDoc.isContentType(key, TEXT) || CalcDoc.isContentType(key, FORMULA)) {
 				String keyVal = CellHandler.asDisplayText(key);
-				CellHandler val = calcDoc.getCellHandlerByIndex(row, this.latestColumn);
+				CellHandler val = this.calcDoc.getCellHandlerByIndex(row, this.latestColumn);
 
 				if (val != null) {
 					CurrencyType security = this.securities.getCurrencyByTickerSymbol(keyVal);
@@ -167,7 +162,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 		if (!MdUtil.isIBondTickerPrefix(security.getTickerSymbol())) {
 			// add this snapshot to our collection
-			getSecurityListForDate(currentSnapshot.get().getDateInt())
+			getSecurityListForDate(currentSnapshot.get())
 				.add(security.getName() + " (" + security.getTickerSymbol() + ')');
 		}
 
@@ -192,11 +187,11 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	} // end getPricesAsOfDates(SnapshotList, int[])
 
 	/**
-	 * @param dateInt The date these securities were updated
-	 * @return The list of security names for the specified date integer
+	 * @param currentSnapshot Last currency snapshot before, or on, today
+	 * @return The list of security names with the same date
 	 */
-	private List<String> getSecurityListForDate(int dateInt) {
-		LocalDate marketDate = MdUtil.convDateIntToLocal(dateInt);
+	private List<String> getSecurityListForDate(CurrencySnapshot currentSnapshot) {
+		LocalDate marketDate = MdUtil.convDateIntToLocal(currentSnapshot.getDateInt());
 
 		return this.securitySnapshots.computeIfAbsent(marketDate, k -> new ArrayList<>());
 	} // end getSecurityListForDate(int)
@@ -395,14 +390,13 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * Capture row with 'Date' in first column.
 	 *
 	 * @param rowIterator Spreadsheet row iterator
-	 * @param calcDoc     Spreadsheet document attributes
 	 * @return True when found
 	 */
-	private boolean findDateRow(XEnumeration rowIterator, CalcDoc calcDoc)
+	private boolean findDateRow(XEnumeration rowIterator)
 			throws MduException {
 		while (rowIterator.hasMoreElements()) {
 			XCellRange row = next(XCellRange.class, rowIterator); // get next row
-			XCell c = calcDoc.getCellByIndex(row, 0); // get its first column
+			XCell c = this.calcDoc.getCellByIndex(row, 0); // get its first column
 
 			if (CalcDoc.isContentType(c, TEXT)
 					&& "Date".equalsIgnoreCase(CellHandler.asDisplayText(c))) {
@@ -513,6 +507,20 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 		return this.calcDoc != null && this.calcDoc.isModified();
 	} // end isModified()
+
+	/**
+	 * Load the currently open spreadsheet document into this instance.
+	 */
+	private void loadCalcDoc() throws MduException {
+		CalcDoc calcDoc = getCalcDoc();
+
+		if (calcDoc != null && calcDoc.getSheets() == null) {
+			// can't access the sheets, force a reconnection
+			calcDoc = getCalcDoc();
+		}
+		this.calcDoc = calcDoc;
+
+	} // end loadCalcDoc()
 
 	/**
 	 * @return The currently open spreadsheet document

@@ -205,15 +205,13 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * Analyze security dates to see if they are all the same.
 	 */
 	private void analyzeSecurityDates() {
-		this.securitySnapshots.forEach((marketDate, daysSecurities) -> {
-			if (this.securitySnapshots.size() == 1) {
-				// must be a single date => use it
-				setDateIfDiff(marketDate);
-			} else {
-				// have multiple latest dates for security prices
-				reportOneOfMultipleDates(marketDate, daysSecurities);
-			}
-		}); // end for each date
+		if (this.securitySnapshots.size() == 1) {
+			// just a single date => use it
+			setDateIfDiff(this.securitySnapshots.firstKey());
+		} else {
+			// have multiple latest dates for security prices
+			this.securitySnapshots.forEach(this::reportOneOfMultipleDates);
+		}
 
 	} // end analyzeSecurityDates()
 

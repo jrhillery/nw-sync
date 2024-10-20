@@ -119,7 +119,8 @@ public class NwSyncConsole extends JFrame {
 	 * Read in and set our icon image.
 	 */
 	private void readIconImage() {
-		setIconImage(HTMLPane.readResourceImage("update-icon24.png", getClass())); //$NON-NLS-1$
+		HTMLPane.readResourceImage("update-icon24.png", getClass()) //$NON-NLS-1$
+				.ifPresent(this::setIconImage);
 
 	} // end readIconImage()
 

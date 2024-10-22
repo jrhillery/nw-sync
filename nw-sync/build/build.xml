@@ -26,10 +26,12 @@ http://jakarta.apache.org/ant/index.html
   </path>
 
   <path id="classpath">
-    <pathelement location="${moneydance.runtime}/lib/gson-2.10.1.jar"/>
     <pathelement location="${moneydance.devkit}/lib/extadmin.jar"/>
     <pathelement location="${moneydance.devkit}/lib/moneydance-dev.jar"/>
     <path refid="libreoffice.lib"/>
+    <pathelement location="${moneydance.runtime}/lib/gson-2.10.1.jar"/>
+    <pathelement location="${moneydance.runtime}/lib/moneydance.jar"/> <!-- AppDebug is here -->
+    <pathelement location="${moneydance.runtime}/lib/kotlin-stdlib-1.9.21.jar"/> <!-- AppDebug seems to need this -->
   </path>
 
   <target name="init">

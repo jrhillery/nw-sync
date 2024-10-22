@@ -19,6 +19,7 @@ import com.infinitekind.moneydance.model.AccountBook;
 import com.infinitekind.moneydance.model.CurrencySnapshot;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
+import com.infinitekind.util.AppDebug;
 import com.leastlogic.moneydance.util.MdUtil;
 import com.leastlogic.moneydance.util.MduException;
 import com.leastlogic.moneydance.util.SnapshotList;
@@ -117,7 +118,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 							setTodaysBalIfDiff(val, account, keyVal);
 							setEarlierBalsIfDiff(row, account, keyVal);
 						}, () ->
-							System.err.format(this.locale, "Ignoring row %s.%n", keyVal));
+							AppDebug.ALL.log("Ignoring row %s".formatted(keyVal)));
 					}
 				}
 			}
@@ -537,7 +538,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 					// found one => use it
 					calcDoc = new CalcDoc(docList.getFirst(), this);
 			default ->
-					// Found %d open spreadsheet documents. Can only work with one.
+					// Found %d open spreadsheet documents; Can only work with one
 					writeFormatted("NWSYNC04", docList.size());
 		}
 
@@ -620,11 +621,11 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		try {
 			result = queryInterface(zInterface, iterator.nextElement());
 		} catch (Exception e) {
-			throw new MduException(e, "Exception iterating to next %s.",
+			throw new MduException(e, "Exception iterating to next %s",
 				zInterface.getSimpleName());
 		}
 		if (result == null)
-			throw new MduException(null, "Unable to obtain next %s.",
+			throw new MduException(null, "Unable to obtain next %s",
 				zInterface.getSimpleName());
 
 		return result;
@@ -656,10 +657,9 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 					queryInterface(XComponent.class, bridge).dispose();
 				}
 			}
-			System.err.println("Office connection closed.");
+			AppDebug.DEBUG.log("Office connection closed");
 		} catch (Throwable e) {
-			System.err.println("Exception disposing office process connection bridge:");
-			e.printStackTrace(System.err);
+			AppDebug.ALL.log("Problem disposing office process connection bridge", e);
 		}
 
 	} // end closeOfficeConnection()
@@ -711,7 +711,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		if (this.syncWorker != null) {
 			this.syncWorker.display(msg);
 		} else {
-			System.err.println(msg);
+			AppDebug.ALL.log(msg);
 		}
 
 	} // end writeFormatted(String, Object...)

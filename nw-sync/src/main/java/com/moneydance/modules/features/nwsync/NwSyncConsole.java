@@ -3,6 +3,7 @@
  */
 package com.moneydance.modules.features.nwsync;
 
+import com.infinitekind.util.AppDebug;
 import com.leastlogic.moneydance.util.MdStorageUtil;
 import com.leastlogic.moneydance.util.StagedInterface;
 import com.leastlogic.swing.util.AwtScreenUtil;
@@ -106,9 +107,9 @@ public class NwSyncConsole extends JFrame {
 					this.staged.commitChanges().ifPresent(this::addText);
 					enableCommitButton(this.staged.isModified());
 				} catch (Exception e) {
+					AppDebug.ALL.log("Problem committing changes", e);
 					addText(e.toString());
 					enableCommitButton(false);
-					e.printStackTrace(System.err);
 				}
 			}
 		}); // end btnCommit.addActionListener
@@ -128,6 +129,7 @@ public class NwSyncConsole extends JFrame {
 	 * @param text HTML-text to append to the output log text area
 	 */
 	public void addText(String text) {
+		AppDebug.DEBUG.log(text);
 		this.pnOutputLog.addText(text);
 
 	} // end addText(String)
@@ -207,7 +209,7 @@ public class NwSyncConsole extends JFrame {
 			try {
 				this.closeableResources.removeFirst().close();
 			} catch (Exception e) {
-				e.printStackTrace(System.err);
+				AppDebug.ALL.log("Problem closing resource", e);
 			}
 		}
 

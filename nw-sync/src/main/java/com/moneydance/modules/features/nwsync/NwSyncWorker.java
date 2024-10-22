@@ -1,5 +1,6 @@
 package com.moneydance.modules.features.nwsync;
 
+import com.infinitekind.util.AppDebug;
 import com.moneydance.apps.md.controller.FeatureModuleContext;
 
 import javax.swing.SwingWorker;
@@ -7,8 +8,6 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-
-import static javax.swing.SwingWorker.StateValue.DONE;
 
 public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCloseable {
    private final NwSyncConsole syncConsole;
@@ -32,6 +31,7 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
          syncConsole.getLocale(), fmContext.getCurrentAccountBook());
       syncConsole.setStaged(this.odsAcc);
       syncConsole.addCloseableResource(this);
+
    } // end constructor
 
    /**
@@ -46,8 +46,8 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
 
          return this.odsAcc.isModified();
       } catch (Throwable e) {
+         AppDebug.ALL.log("Problem running %s".formatted(this.extensionName), e);
          display(e.toString());
-         e.printStackTrace(System.err);
 
          return false;
       } finally {
@@ -65,9 +65,10 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
       } catch (CancellationException e) {
          // ignore
       } catch (Exception e) {
+         AppDebug.ALL.log("Problem enabling commit button", e);
          this.syncConsole.addText(e.toString());
-         e.printStackTrace(System.err);
       }
+
    } // end done()
 
    /**
@@ -77,6 +78,7 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
     */
    public void display(String... msgs) {
       publish(msgs);
+
    } // end display(String...)
 
    /**
@@ -90,6 +92,7 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
             this.syncConsole.addText(msg);
          }
       }
+
    } // end process(List<String>)
 
    /**
@@ -104,17 +107,16 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
       this.syncConsole.removeCloseableResource(this);
 
       return null;
-   } // end stopExecute(String)
+   } // end stopExecute()
 
    /**
-    * Closes this resource, relinquishing any underlying resources.
+    * Close this resource, relinquishing any underlying resources.
     * Cancel this worker, wait for it to complete, discard its results and close odsAcc.
     */
    public void close() {
       try (this.odsAcc) { // make sure we close odsAcc
-         if (getState() != DONE) {
-            System.err.format(this.syncConsole.getLocale(),
-               "Cancelling running %s invocation.%n", this.extensionName);
+         if (getState() != StateValue.DONE) {
+            AppDebug.ALL.log("Cancelling running %s invocation".formatted(this.extensionName));
             cancel(false);
 
             // wait for prior worker to complete

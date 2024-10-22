@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.infinitekind.util.AppDebug;
 import com.leastlogic.moneydance.util.MduException;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.moneydance.modules.features.nwsync.CellHandler.FloatCellHandler;
@@ -215,7 +216,7 @@ public class CalcDoc {
 				cellNumberFormatProps = this.numberFormats
 					.getByKey((Integer) cellProps.getPropertyValue("NumberFormat"));
 			} catch (Exception e) {
-				System.err.format("Exception obtaining cell number format: %s%n", e);
+				AppDebug.ALL.log("Problem obtaining cell number format", e);
 			}
 		}
 
@@ -235,7 +236,7 @@ public class CalcDoc {
 		try {
 			return (Short) cellNumberFormatProps.getPropertyValue("Type");
 		} catch (Exception e) {
-			System.err.format("Exception obtaining number format type: %s%n", e);
+			AppDebug.ALL.log("Problem obtaining type of cell number format", e);
 
 			return UNDEFINED;
 		}
@@ -272,7 +273,7 @@ public class CalcDoc {
 
 			return row.getCellByPosition(index, 0);
 		} catch (Exception e) {
-			System.err.format("Exception obtaining cell in row: %s%n", e);
+			AppDebug.ALL.log("Problem obtaining cell %d in row: %s".formatted(index, row), e);
 
 			return null;
 		}

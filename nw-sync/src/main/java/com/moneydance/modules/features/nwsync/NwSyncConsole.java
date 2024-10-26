@@ -104,7 +104,10 @@ public class NwSyncConsole extends JFrame {
 			// invoked when Commit is selected
 			if (this.staged != null) {
 				try {
-					this.staged.commitChanges().ifPresent(this::addText);
+					this.staged.commitChanges().ifPresent(summary -> {
+						AppDebug.ALL.log(summary);
+						this.pnOutputLog.addText(summary);
+					});
 					enableCommitButton(this.staged.isModified());
 				} catch (Exception e) {
 					AppDebug.ALL.log("Problem committing changes", e);

@@ -19,11 +19,7 @@ import com.infinitekind.moneydance.model.AccountBook;
 import com.infinitekind.moneydance.model.CurrencySnapshot;
 import com.infinitekind.moneydance.model.CurrencyTable;
 import com.infinitekind.moneydance.model.CurrencyType;
-import com.infinitekind.util.AppDebug;
-import com.leastlogic.moneydance.util.MdUtil;
-import com.leastlogic.moneydance.util.MduException;
-import com.leastlogic.moneydance.util.SnapshotList;
-import com.leastlogic.moneydance.util.StagedInterface;
+import com.leastlogic.moneydance.util.*;
 import com.leastlogic.swing.util.HTMLPane;
 import com.moneydance.modules.features.nwsync.CellHandler.DateCellHandler;
 import com.sun.star.bridge.XBridge;
@@ -118,7 +114,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 							setTodaysBalIfDiff(val, account, keyVal);
 							setEarlierBalsIfDiff(row, account, keyVal);
 						}, () ->
-							AppDebug.ALL.log("Ignoring row %s".formatted(keyVal)));
+							MdLog.all("Ignoring row %s".formatted(keyVal)));
 					}
 				}
 			}
@@ -657,9 +653,9 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 					queryInterface(XComponent.class, bridge).dispose();
 				}
 			}
-			AppDebug.DEBUG.log("Office connection closed");
+			MdLog.debug("Office connection closed");
 		} catch (Throwable e) {
-			AppDebug.ALL.log("Problem disposing office process connection bridge", e);
+			MdLog.all("Problem disposing office process connection bridge", e);
 		}
 
 	} // end closeOfficeConnection()
@@ -711,7 +707,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		if (this.syncWorker != null) {
 			this.syncWorker.display(msg);
 		} else {
-			AppDebug.ALL.log(msg);
+			MdLog.all(msg);
 		}
 
 	} // end writeFormatted(String, Object...)

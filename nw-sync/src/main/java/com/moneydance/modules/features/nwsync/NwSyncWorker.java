@@ -1,6 +1,6 @@
 package com.moneydance.modules.features.nwsync;
 
-import com.infinitekind.util.AppDebug;
+import com.leastlogic.moneydance.util.MdLog;
 import com.moneydance.apps.md.controller.FeatureModuleContext;
 
 import javax.swing.SwingWorker;
@@ -46,7 +46,7 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
 
          return this.odsAcc.isModified();
       } catch (Throwable e) {
-         AppDebug.ALL.log("Problem running %s".formatted(this.extensionName), e);
+         MdLog.all("Problem running %s".formatted(this.extensionName), e);
          display(e.toString());
 
          return false;
@@ -65,7 +65,7 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
       } catch (CancellationException e) {
          // ignore
       } catch (Exception e) {
-         AppDebug.ALL.log("Problem enabling commit button", e);
+         MdLog.all("Problem enabling commit button", e);
          this.syncConsole.addText(e.toString());
       }
 
@@ -116,7 +116,7 @@ public class NwSyncWorker extends SwingWorker<Boolean, String> implements AutoCl
    public void close() {
       try (this.odsAcc) { // make sure we close odsAcc
          if (getState() != StateValue.DONE) {
-            AppDebug.ALL.log("Cancelling running %s invocation".formatted(this.extensionName));
+            MdLog.all("Cancelling running %s invocation".formatted(this.extensionName));
             cancel(false);
 
             // wait for prior worker to complete

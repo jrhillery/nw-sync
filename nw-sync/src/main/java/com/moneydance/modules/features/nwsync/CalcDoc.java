@@ -41,7 +41,6 @@ import com.sun.star.util.XNumberFormatsSupplier;
 public class CalcDoc {
 
 	private final XSpreadsheetDocument spreadsheetDoc;
-	private final MessageBundleProvider msgProvider;
 	private final String urlString;
 	private final XNumberFormats numberFormats;
 	private final LocalDate zeroDate;
@@ -52,30 +51,24 @@ public class CalcDoc {
 	 * Sole constructor.
 	 *
 	 * @param spreadsheetDoc Spreadsheet document
-	 * @param msgProvider    Message bundle provider
 	 */
-	public CalcDoc(XSpreadsheetDocument spreadsheetDoc,
-			MessageBundleProvider msgProvider) throws MduException {
+	public CalcDoc(XSpreadsheetDocument spreadsheetDoc) throws MduException {
 		this.spreadsheetDoc = spreadsheetDoc;
-		this.msgProvider = msgProvider;
 		this.urlString = queryInterface(XModel.class, spreadsheetDoc).getURL();
 		this.numberFormats = queryInterface(XNumberFormatsSupplier.class, spreadsheetDoc)
 			.getNumberFormats();
 		XPropertySet docProps = queryInterface(XPropertySet.class, spreadsheetDoc);
 		if (docProps == null)
-			// Unable to obtain properties for %s.
-			throw asException(null, "NWSYNC30", this.urlString);
+			throw new MduException(null, "Unable to obtain properties for %s", this.urlString);
 
 		Date nullDate;
 		try {
 			nullDate = (Date) docProps.getPropertyValue("NullDate");
 		} catch (Exception e) {
-			// Exception obtaining NullDate for %s.
-			throw asException(e, "NWSYNC31", this.urlString);
+			throw new MduException(e, "Exception obtaining NullDate for %s", this.urlString);
 		}
 		if (nullDate == null)
-			// Unable to obtain NullDate for %s.
-			throw asException(null, "NWSYNC32", this.urlString);
+			throw new MduException(null, "Unable to obtain NullDate for %s", this.urlString);
 
 		this.zeroDate = LocalDate.of(nullDate.Year, nullDate.Month, nullDate.Day);
 
@@ -87,38 +80,32 @@ public class CalcDoc {
 	public XEnumeration getFirstSheetRowIterator() throws MduException {
 		XIndexAccess sheetIndex = getSheets();
 		if (sheetIndex == null)
-			// Unable to index sheets in %s.
-			throw asException(null, "NWSYNC38", this.urlString);
+			throw new MduException(null, "Unable to index sheets in %s", this.urlString);
 		XSpreadsheet firstSheet;
 
 		try {
 			firstSheet = queryInterface(XSpreadsheet.class, sheetIndex.getByIndex(0));
 		} catch (Exception e) {
-			// Exception obtaining first sheet in %s.
-			throw asException(e, "NWSYNC39", this.urlString);
+			throw new MduException(e, "Exception obtaining first sheet in %s", this.urlString);
 		}
 		if (firstSheet == null)
-			// Unable to obtain first sheet in %s.
-			throw asException(null, "NWSYNC40", this.urlString);
+			throw new MduException(null, "Unable to obtain first sheet in %s", this.urlString);
 
 		// get a cursor, so we don't iterator over all the empty rows at the bottom
 		XUsedAreaCursor cur = queryInterface(XUsedAreaCursor.class, firstSheet.createCursor());
 		if (cur == null)
-			// Unable to get cursor in %s.
-			throw asException(null, "NWSYNC41", this.urlString);
+			throw new MduException(null, "Unable to get cursor in %s", this.urlString);
 
 		cur.gotoStartOfUsedArea(false); // set the range to a single cell
 		cur.gotoEndOfUsedArea(true); // expand range to include all used area
 		XColumnRowRange colRowRange = queryInterface(XColumnRowRange.class, cur);
 		if (colRowRange == null)
-			// Unable to get column row range in %s.
-			throw asException(null, "NWSYNC42", this.urlString);
+			throw new MduException(null, "Unable to get column row range in %s", this.urlString);
 
 		XEnumerationAccess rowAccess = queryInterface(XEnumerationAccess.class,
 				colRowRange.getRows());
 		if (rowAccess == null)
-			// Unable to get row enumeration access in %s.
-			throw asException(null, "NWSYNC43", this.urlString);
+			throw new MduException(null, "Unable to get row enumeration access in %s", this.urlString);
 
 		return rowAccess.createEnumeration();
 	} // end getFirstSheetRowIterator()
@@ -278,16 +265,5 @@ public class CalcDoc {
 			return null;
 		}
 	} // end getCellByIndex(XCellRange, int)
-
-	/**
-	 * @param cause  Exception that caused this (null if none)
-	 * @param key    The resource bundle key (or message)
-	 * @param params Optional parameters for the detail message
-	 * @return An exception with the supplied data
-	 */
-	private MduException asException(Throwable cause, String key, Object... params) {
-
-		return new MduException(cause, this.msgProvider.retrieveMessage(key), params);
-	} // end asException(Throwable, String, Object...)
 
 } // end class CalcDoc

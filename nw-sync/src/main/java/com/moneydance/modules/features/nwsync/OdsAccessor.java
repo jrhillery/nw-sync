@@ -42,7 +42,7 @@ import ooo.connector.server.OOoServer;
  * Provides read/write access to an ods (OpenOffice/LibreOffice) spreadsheet
  * document.
  */
-public class OdsAccessor implements MessageBundleProvider, StagedInterface, AutoCloseable {
+public class OdsAccessor implements StagedInterface, AutoCloseable {
 	private final NwSyncWorker syncWorker;
 	private final Locale locale;
 	private final Account root;
@@ -58,7 +58,6 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	private int numDatesSet = 0;
 	private final TreeMap<LocalDate, List<String>> securitySnapshots = new TreeMap<>();
 	private Properties nwSyncProps = null;
-	private ResourceBundle msgBundle = null;
 
 	private static final String propertiesFileName = "nw-sync.properties";
 	private static final DateTimeFormatter dateFmt = DateTimeFormatter.ofLocalizedDate(MEDIUM);
@@ -125,8 +124,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		analyzeSecurityDates();
 
 		if (!isModified()) {
-			// No new price or balance data found.
-			writeFormatted("NWSYNC03");
+			this.syncWorker.display("No new price or balance data found");
 		}
 
 	} // end syncNwData()
@@ -164,7 +162,7 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		}
 
 		return MdUtil.getAndValidateCurrentSnapshotPrice(security, currentSnapshot.get(),
-				this.locale, correction -> writeFormatted("NWSYNC00", correction));
+			this.locale, this.syncWorker::display);
 	} // end getTodaysPrice(SnapshotList)
 
 	/**
@@ -212,8 +210,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param daysSecurities The list of security names updated on market date
 	 */
 	private void reportOneOfMultipleDates(LocalDate marketDate, List<String> daysSecurities) {
-		// The following security prices were last updated on %s: %s
-		writeFormatted("NWSYNC17", marketDate.format(dateFmt), daysSecurities);
+		this.syncWorker.display("Prices last updated on %s: %s"
+			.formatted(marketDate.format(dateFmt), daysSecurities));
 		LocalDate oldDate = this.latestDateCell.getDateValue();
 
 		if (marketDate.isAfter(oldDate)
@@ -234,8 +232,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 			if (marketDate.getMonthValue() == oldDate.getMonthValue()
 					&& marketDate.getYear() == oldDate.getYear()) {
-				// Change rightmost date from %s to %s.
-				writeFormatted("NWSYNC15", oldDate.format(dateFmt), marketDate.format(dateFmt));
+				this.syncWorker.display("Change the rightmost date from %s to %s"
+					.formatted(oldDate.format(dateFmt), marketDate.format(dateFmt)));
 
 				this.latestDateCell.setNewValue(MdUtil.convLocalToDateInt(marketDate));
 				++this.numDatesSet;
@@ -251,8 +249,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @param oldDate    The date from the spreadsheet
 	 */
 	private void handleNewMonth(LocalDate marketDate, LocalDate oldDate) {
-		// A new month column is needed to change date from %s to %s.
-		writeFormatted("NWSYNC16", oldDate.format(dateFmt), marketDate.format(dateFmt));
+		this.syncWorker.display("A new month column is needed to change date from %s to %s"
+			.formatted(oldDate.format(dateFmt), marketDate.format(dateFmt)));
 
 		this.calcDoc.forgetChanges();
 
@@ -285,11 +283,12 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 			BigDecimal oldPrice = MdUtil.roundPrice(oldVal.doubleValue());
 
 			if (price.compareTo(oldPrice) != 0) {
-				// Change %s (%s) price for %s from %s to %s (<span class\="%s">%+.2f%%</span>).
 				NumberFormat priceFmt = MdUtil.getCurrencyFormat(this.locale, oldPrice, price);
-				writeFormatted("NWSYNC10", security.getName(), security.getTickerSymbol(), dayStr,
+				this.syncWorker.display(
+					"Change %s (%s) price for %s from %s to %s (<span class=\"%s\">%+.2f%%</span>)"
+					.formatted(security.getName(), security.getTickerSymbol(), dayStr,
 					priceFmt.format(oldPrice), priceFmt.format(price), HTMLPane.getSpanCl(price, oldPrice),
-					(price.doubleValue() / oldPrice.doubleValue() - 1) * 100);
+					(price.doubleValue() / oldPrice.doubleValue() - 1) * 100));
 
 				val.setNewValue(price);
 				++this.numPricesSet;
@@ -351,8 +350,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 					? MdUtil.getCurrencyFormat(this.locale, oldBal, balance)
 					: MdUtil.getNumberFormat(this.locale, oldBal, balance);
 
-				// Change %s balance for %s from %s to %s.
-				writeFormatted("NWSYNC11", keyVal, dayStr, nf.format(oldBal), nf.format(balance));
+				this.syncWorker.display("Change %s balance for %s from %s to %s"
+					.formatted(keyVal, dayStr, nf.format(oldBal), nf.format(balance)));
 
 				val.setNewValue(balance);
 				++this.numBalancesSet;
@@ -403,8 +402,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 			}
 		} // end while
 
-		// Unable to find row with 'Date' in first column in %s.
-		writeFormatted("NWSYNC01", this.calcDoc);
+		this.syncWorker.display("Unable to find row with 'Date' in first column in %s"
+			.formatted(this.calcDoc));
 
 		return false;
 	} // end findDateRow(XEnumeration)
@@ -431,8 +430,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 		} while (c instanceof DateCellHandler);
 
 		if (cellIndex == 1) {
-			// Unable to find any dates in the row with 'Date' in first column in %s.
-			writeFormatted("NWSYNC02", this.calcDoc);
+			this.syncWorker.display("Unable to find any dates in the row with 'Date' in first column in %s"
+				.formatted(this.calcDoc));
 
 			return false;
 		}
@@ -447,9 +446,8 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 			this.earlierDates[i] = MdUtil.convLocalToDateInt(dates.get(i));
 		}
 
-		// Found date [%s] in %s.
-		writeFormatted("NWSYNC13", this.latestDateCell.getDateValue().format(dateFmt),
-			this.calcDoc);
+		this.syncWorker.display("Found date [%s] in %s"
+			.formatted(this.latestDateCell.getDateValue().format(dateFmt), this.calcDoc));
 
 		return true;
 	} // end findLatestDate()
@@ -464,18 +462,12 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 		if (isModified()) {
 			this.calcDoc.commitChanges();
-			String msgKey;
-
-			if (this.numDatesSet == 1) {
-				// Changed %d security price%s, %d account balance%s and the rightmost date.
-				msgKey = "NWSYNC19";
-			} else {
-				// Changed %d security price%s, %d account balance%s and %d dates.
-				msgKey = "NWSYNC18";
-			}
-			commitText = Optional.of(String.format(this.locale, retrieveMessage(msgKey),
-					this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
-					this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s", this.numDatesSet));
+			String msg = (this.numDatesSet == 1)
+				? "Changed %d security price%s, %d account balance%s and the rightmost date"
+				: "Changed %d security price%s, %d account balance%s and %d dates";
+			commitText = Optional.of(msg.formatted(
+				this.numPricesSet, this.numPricesSet == 1 ? "" : "s",
+				this.numBalancesSet, this.numBalancesSet == 1 ? "" : "s", this.numDatesSet));
 		}
 
 		forgetChanges();
@@ -528,14 +520,13 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 		switch (docList.size()) {
 			case 0 ->
-					// No open spreadsheet documents found.
-					writeFormatted("NWSYNC05");
+					this.syncWorker.display("No open spreadsheet documents found");
 			case 1 ->
 					// found one => use it
-					calcDoc = new CalcDoc(docList.getFirst(), this);
+					calcDoc = new CalcDoc(docList.getFirst());
 			default ->
-					// Found %d open spreadsheet documents; Can only work with one
-					writeFormatted("NWSYNC04", docList.size());
+					this.syncWorker.display("Found %d open spreadsheet documents; Can only work with one"
+						.formatted(docList.size()));
 		}
 
 		return calcDoc;
@@ -569,10 +560,11 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 	 * @return A LibreOffice desktop interface
 	 */
 	private XDesktop2 getOfficeDesktop() throws MduException {
-		String officeInstallPath = getNwSyncProps().getProperty("office.install.path");
+		final String OFFICE_PATH = "office.install.path";
+		String officeInstallPath = getNwSyncProps().getProperty(OFFICE_PATH);
 		if (officeInstallPath == null)
-			// Unable to obtain office.install.path from %s on the class path.
-			throw asException(null, "NWSYNC54", propertiesFileName);
+			throw new MduException(null, "Unable to obtain %s from %s on the class path",
+				OFFICE_PATH, propertiesFileName);
 
 		XComponentContext remoteContext;
 		try {
@@ -580,29 +572,24 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 			remoteContext = new BootstrapSocketConnector(
 				new OOoServer(officeInstallPath, oooOptions)).connect();
 		} catch (Throwable e) {
-			// Exception obtaining office context.
-			throw asException(e, "NWSYNC33");
+			throw new MduException(e, "Exception obtaining office context");
 		}
 		if (remoteContext == null)
-			// Unable to obtain office context.
-			throw asException(null, "NWSYNC34");
+			throw new MduException(null, "Unable to obtain office context");
 
 		XMultiComponentFactory remoteServiceMgr = remoteContext.getServiceManager();
 		if (remoteServiceMgr == null)
-			// Unable to obtain office service manager.
-			throw asException(null, "NWSYNC35");
+			throw new MduException(null, "Unable to obtain office service manager");
 
 		XDesktop2 libreOfficeDesktop;
 		try {
 			libreOfficeDesktop = queryInterface(XDesktop2.class, remoteServiceMgr
 				.createInstanceWithContext("com.sun.star.frame.Desktop", remoteContext));
 		} catch (Exception e) {
-			// Exception obtaining office desktop.
-			throw asException(e, "NWSYNC36");
+			throw new MduException(e, "Exception obtaining office desktop");
 		}
 		if (libreOfficeDesktop == null)
-			// Unable to obtain office desktop.
-			throw asException(null, "NWSYNC37");
+			throw new MduException(null, "Unable to obtain office desktop");
 
 		return libreOfficeDesktop;
 	} // end getOfficeDesktop()
@@ -670,57 +657,5 @@ public class OdsAccessor implements MessageBundleProvider, StagedInterface, Auto
 
 		return this.nwSyncProps;
 	} // end getNwSyncProps()
-
-	/**
-	 * @return Our message bundle
-	 */
-	private ResourceBundle getMsgBundle() {
-		if (this.msgBundle == null) {
-			this.msgBundle = MdUtil.getMsgBundle(NwSyncConsole.baseMessageBundleName,
-				this.locale);
-		}
-
-		return this.msgBundle;
-	} // end getMsgBundle()
-
-	/**
-	 * @param key The resource bundle key (or message)
-	 * @return Message for this key
-	 */
-	public String retrieveMessage(String key) {
-		try {
-
-			return getMsgBundle().getString(key);
-		} catch (Exception e) {
-			// just use the key when not found
-			return key;
-		}
-	} // end retrieveMessage(String)
-
-	/**
-	 * @param key    The resource bundle key (or message)
-	 * @param params Optional array of parameters for the message
-	 */
-	private void writeFormatted(String key, Object... params) {
-		String msg = String.format(this.locale, retrieveMessage(key), params);
-
-		if (this.syncWorker != null) {
-			this.syncWorker.display(msg);
-		} else {
-			MdLog.all(msg);
-		}
-
-	} // end writeFormatted(String, Object...)
-
-	/**
-	 * @param cause  Exception that caused this (null if none)
-	 * @param key    The resource bundle key (or message)
-	 * @param params Optional parameters for the detail message
-	 * @return An exception with the supplied data
-	 */
-	private MduException asException(Throwable cause, String key, Object... params) {
-
-		return new MduException(cause, retrieveMessage(key), params);
-	} // end asException(Throwable, String, Object...)
 
 } // end class OdsAccessor

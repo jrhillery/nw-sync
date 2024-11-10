@@ -39,7 +39,7 @@ http://jakarta.apache.org/ant/index.html
   </target>
 
   <target name="nwsync" depends="init">
-    <javac debug="${debug}" optimize="${optimize}"
+    <javac debug="${debug}" optimize="${optimize}" release="21"
       classpathref="classpath" destdir="${build}">
         <src path="${src}/src/main/java"/>
         <src path="${mdutil}/src/main/java"/>

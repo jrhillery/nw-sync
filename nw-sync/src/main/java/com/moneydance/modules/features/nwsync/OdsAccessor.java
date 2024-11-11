@@ -130,7 +130,7 @@ public class OdsAccessor implements StagedInterface, AutoCloseable {
 	} // end syncNwData()
 
 	/**
-	 * @param keyVal Account name:sub-account name
+	 * @param keyVal Account name:subaccount name
 	 * @return The Moneydance account corresponding to keyVal
 	 */
 	private Optional<Account> getAccount(String keyVal) {
